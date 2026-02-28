@@ -5,7 +5,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <span className="text-sm font-bold tracking-tight text-foreground">Artikelin</span>
           <p className="text-xs text-muted-foreground">
-            © 2026 Artikelin. All rights reserved.
+            © 2026 Artikelin Made By Naufal. All rights reserved.
           </p>
         </div>
       </div>

@@ -9,6 +9,11 @@ import ArticleDetail from "./pages/ArticleDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "@/pages/AdminLogin";
+import AdminCreateArticle from "./pages/AdminCreateArticle";
+import AdminCategories from "./pages/AdminCategories";
+import AdminEditArticle from "./pages/AdminEditArticle";
+
+
 
 const queryClient = new QueryClient();
 
@@ -26,6 +31,9 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/articles/new" element={<AdminCreateArticle />} />
+          <Route path="/admin/categories" element={<AdminCategories />} />
+          <Route path="/admin/articles/edit/:id" element={<AdminEditArticle />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

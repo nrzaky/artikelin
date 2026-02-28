@@ -17,11 +17,11 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
       if (!res.ok) {
         alert("Email atau password salah");
@@ -71,6 +71,7 @@ const AdminLogin = () => {
       </div>
     </div>
   );
+  console.log({ email, password });
 };
 
 export default AdminLogin;

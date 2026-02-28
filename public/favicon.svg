@@ -1,0 +1,33 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  fill="none"
+>
+  <!-- Outer rounded square -->
+  <rect
+    x="4"
+    y="4"
+    width="56"
+    height="56"
+    rx="16"
+    stroke="currentColor"
+    stroke-width="4"
+  />
+
+  <!-- Stylized A (Article) -->
+  <path
+    d="M20 44L32 18L44 44"
+    stroke="currentColor"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Cross bar of A -->
+  <path
+    d="M26 34H38"
+    stroke="currentColor"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+</svg>
