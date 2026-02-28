@@ -4,6 +4,10 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { articles } from "@/data/articles";
 import { Button } from "@/components/ui/button";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { isAdmin } from "@/lib/auth";
+import { logoutAdmin } from "@/lib/auth";
 import {
   Table,
   TableBody,
@@ -14,6 +18,14 @@ import {
 } from "@/components/ui/table";
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+
+useEffect(() => {
+  if (!isAdmin()) {
+    navigate("/admin/login");
+  }
+}, [navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -24,7 +36,16 @@ const AdminDashboard = () => {
             <h1 className="text-3xl font-extrabold mb-1">Dashboard</h1>
             <p className="text-muted-foreground text-sm">Manage your articles</p>
           </div>
-          <Button>+ New Article</Button>
+          {isAdmin() && <Button>+ New Article</Button>}
+          <Button
+            variant="outline"
+            onClick={() => {
+              logoutAdmin();
+              navigate("/admin/login");
+            }}
+          >
+            Logout
+          </Button>
         </div>
 
         {/* Stats */}
@@ -86,12 +107,16 @@ const AdminDashboard = () => {
                           <Eye className="h-4 w-4" />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {isAdmin() && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

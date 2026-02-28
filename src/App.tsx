@@ -8,6 +8,7 @@ import ArticlesPage from "./pages/ArticlesPage";
 import ArticleDetail from "./pages/ArticleDetail";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "@/pages/AdminLogin";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,8 @@ const App = () => (
           <Route path="/articles/:id" element={<ArticleDetail />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="*" element={<NotFound />} />
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
