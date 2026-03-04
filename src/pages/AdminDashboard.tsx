@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { isAdmin, logoutAdmin } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 import {
   Table,
@@ -27,8 +28,6 @@ type Article = {
   created_at?: string | null;
   status: "draft" | "published";
 };
-
-const API_URL = "http://localhost:3001";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -53,15 +52,27 @@ const AdminDashboard = () => {
    * ======================= */
   useEffect(() => {
     const fetchArticles = async () => {
-      try {
-        const res = await fetch("/api/articles?admin=true");
-        const data = await res.json();
-        setArticles(data);
-      } catch (err) {
-        console.error("Failed to fetch articles", err);
-      } finally {
-        setLoading(false);
+      const { data, error } = await supabase
+        .from("articles")
+        .select(`
+          *,
+          categories(name)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error(error);
+        return;
       }
+
+      const formatted =
+        data?.map((a: any) => ({
+          ...a,
+          category: a.categories?.name,
+        })) || [];
+
+      setArticles(formatted);
+      setLoading(false);
     };
 
     fetchArticles();
@@ -73,12 +84,17 @@ const AdminDashboard = () => {
   const deleteArticle = async (id: number) => {
     if (!confirm("Yakin ingin menghapus artikel ini?")) return;
 
-    try {
-      await fetch(`/api/articles/${id}`, { method: "DELETE" });
-      setArticles((prev) => prev.filter((a) => a.id !== id));
-    } catch {
+    const { error } = await supabase
+      .from("articles")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
       alert("Gagal menghapus artikel");
+      return;
     }
+
+    setArticles((prev) => prev.filter((a) => a.id !== id));
   };
 
   /* =======================
@@ -204,13 +220,10 @@ const AdminDashboard = () => {
               )}
 
               {filteredArticles.map((article) => {
-                const imageUrl = article.image
-                  ? `${API_URL}${article.image}`
-                  : null;
+                const imageUrl = article.image;
 
                 return (
                   <TableRow key={article.id}>
-                    {/* IMAGE */}
                     <TableCell className="relative">
                       <img
                         src={imageUrl ?? "/placeholder.jpg"}
@@ -231,12 +244,10 @@ const AdminDashboard = () => {
                       )}
                     </TableCell>
 
-                    {/* TITLE */}
                     <TableCell className="font-medium max-w-[220px] truncate">
                       {article.title}
                     </TableCell>
 
-                    {/* STATUS */}
                     <TableCell>
                       <span
                         className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -249,19 +260,16 @@ const AdminDashboard = () => {
                       </span>
                     </TableCell>
 
-                    {/* CATEGORY */}
                     <TableCell className="hidden md:table-cell">
                       {article.category || "-"}
                     </TableCell>
 
-                    {/* DATE */}
                     <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                       {article.created_at
                         ? new Date(article.created_at).toLocaleDateString()
                         : "-"}
                     </TableCell>
 
-                    {/* ACTION */}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Link to={`/articles/${article.slug}`}>
@@ -299,9 +307,6 @@ const AdminDashboard = () => {
   );
 };
 
-/* =======================
- * STAT COMPONENT
- * ======================= */
 const Stat = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-xl bg-card shadow-soft p-5">
     <p className="text-sm text-muted-foreground mb-1">

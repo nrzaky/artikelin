@@ -5,8 +5,7 @@ import { Helmet } from "react-helmet-async";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-
-const API_URL = "http://localhost:3001";
+import { supabase } from "@/lib/supabase";
 
 type Article = {
   id: number;
@@ -39,20 +38,45 @@ const ArticleDetail = () => {
 
   /* ================= FETCH ================= */
   useEffect(() => {
-    if (!slug) return;
+    const fetchArticle = async () => {
+      if (!slug) return;
 
-    fetch(`/api/articles/slug/${slug}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setArticle(data);
+      const { data, error } = await supabase
+        .from("articles")
+        .select(`
+          *,
+          categories(name)
+        `)
+        .eq("slug", slug)
+        .single();
 
-        // fetch related (simple latest 3)
-        fetch("/api/articles?limit=3")
-          .then((r) => r.json())
-          .then(setRelated);
-      })
-      .catch(() => setArticle(null))
-      .finally(() => setLoading(false));
+      if (error || !data) {
+        setArticle(null);
+        setLoading(false);
+        return;
+      }
+
+      const formatted = {
+        ...data,
+        category: data.categories?.name,
+      };
+
+      setArticle(formatted);
+
+      const { data: relatedData } = await supabase
+        .from("articles")
+        .select("id,title,slug,image")
+        .eq("status", "published")
+        .neq("slug", slug)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      setRelated(relatedData || []);
+
+      setLoading(false);
+    };
+
+    fetchArticle();
   }, [slug]);
 
   /* ================= READ TIME ================= */
@@ -114,7 +138,7 @@ const ArticleDetail = () => {
         <meta property="og:description" content={plainText} />
         <meta property="og:url" content={fullUrl} />
         {article.image && (
-          <meta property="og:image" content={`${API_URL}${article.image}`} />
+          <meta property="og:image" content={article.image} />
         )}
         <link rel="canonical" href={fullUrl} />
       </Helmet>
@@ -124,13 +148,10 @@ const ArticleDetail = () => {
       {/* HERO */}
       <div className="relative h-[500px] overflow-hidden">
         <img
-          src={
-            article.image
-              ? `${API_URL}${article.image}`
-              : "/placeholder.jpg"
-          }
+          src={article.image || "/placeholder.jpg"}
           className="w-full h-full object-cover"
         />
+
         <div className="absolute inset-0 bg-black/60" />
 
         <div className="absolute bottom-0 left-0 right-0 p-10 max-w-5xl mx-auto text-white">
@@ -146,11 +167,13 @@ const ArticleDetail = () => {
 
           <div className="flex gap-6 text-sm text-white/80">
             {article.author && <span>{article.author}</span>}
+
             {article.created_at && (
               <span>
                 {new Date(article.created_at).toLocaleDateString()}
               </span>
             )}
+
             <span>{readTime} min read</span>
             <span>{article.views || 0} views</span>
           </div>
@@ -158,106 +181,42 @@ const ArticleDetail = () => {
       </div>
 
       {/* BODY */}
-<div className="relative">
+      <div className="mx-auto px-4 md:px-6 py-20 max-w-7xl">
+        <div className="flex flex-col lg:flex-row gap-16 justify-center">
 
-  {/* SHARE FLOAT DESKTOP */}
-  <div className="hidden lg:flex fixed left-6 top-1/3 flex-col gap-4 z-40">
-    <a
-      href={`https://twitter.com/intent/tweet?url=${fullUrl}`}
-      target="_blank"
-      className="p-2 rounded-full bg-muted hover:bg-muted/70 transition"
-    >
-      <Twitter className="w-4 h-4" />
-    </a>
+          <article className="w-full max-w-[70ch]">
 
-    <a
-      href={`https://www.facebook.com/sharer/sharer.php?u=${fullUrl}`}
-      target="_blank"
-      className="p-2 rounded-full bg-muted hover:bg-muted/70 transition"
-    >
-      <Facebook className="w-4 h-4" />
-    </a>
+            <Link
+              to="/articles"
+              className="inline-flex items-center gap-2 text-sm mb-12 text-muted-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to articles
+            </Link>
 
-    <button
-      onClick={() => navigator.clipboard.writeText(fullUrl)}
-      className="p-2 rounded-full bg-muted hover:bg-muted/70 transition"
-    >
-      <Link2 className="w-4 h-4" />
-    </button>
-  </div>
+            <div
+              className="prose prose-lg dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: article.content || "",
+              }}
+            />
+          </article>
 
-  {/* MAIN WRAPPER */}
-  <div className="mx-auto px-4 md:px-6 py-20 max-w-7xl">
+          {toc.length > 0 && (
+            <aside className="hidden lg:block w-64 sticky top-32 h-fit">
+              <div className="border rounded-xl p-6 bg-card">
+                <h3 className="font-semibold mb-4">On this page</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  {toc.map((item) => (
+                    <li key={item.id}>{item.text}</li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
+          )}
 
-    <div className="flex flex-col lg:flex-row gap-16 justify-center">
-
-      {/* CONTENT */}
-      <article className="w-full max-w-[70ch]">
-
-        <Link
-          to="/articles"
-          className="inline-flex items-center gap-2 text-sm mb-12 text-muted-foreground hover:text-foreground transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to articles
-        </Link>
-
-        <div
-          className="
-            prose 
-            prose-lg 
-            dark:prose-invert 
-            max-w-none 
-            text-justify
-            leading-relaxed
-          "
-          dangerouslySetInnerHTML={{
-            __html: article.content || "",
-          }}
-        />
-      </article>
-
-      {/* TOC (DESKTOP ONLY) */}
-      {toc.length > 0 && (
-        <aside className="hidden lg:block w-64 sticky top-32 h-fit">
-          <div className="border rounded-xl p-6 bg-card">
-            <h3 className="font-semibold mb-4">On this page</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              {toc.map((item) => (
-                <li key={item.id} className="hover:text-foreground transition">
-                  {item.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
-      )}
-
-    </div>
-  </div>
-
-      {/* SHARE MOBILE BAR */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-background border-t flex justify-center gap-10 py-3 z-50">
-        <a
-          href={`https://twitter.com/intent/tweet?url=${fullUrl}`}
-          target="_blank"
-        >
-          <Twitter className="w-5 h-5" />
-        </a>
-
-        <a
-          href={`https://www.facebook.com/sharer/sharer.php?u=${fullUrl}`}
-          target="_blank"
-        >
-          <Facebook className="w-5 h-5" />
-        </a>
-
-        <button onClick={() => navigator.clipboard.writeText(fullUrl)}>
-          <Link2 className="w-5 h-5" />
-        </button>
+        </div>
       </div>
-
-    </div>
 
       {/* RELATED */}
       {related.length > 0 && (
@@ -266,26 +225,18 @@ const ArticleDetail = () => {
             <h2 className="text-2xl font-bold mb-10">
               Related Articles
             </h2>
+
             <div className="grid md:grid-cols-3 gap-8">
               {related.map((r) => (
-                <Link
-                  key={r.id}
-                  to={`/articles/${r.slug}`}
-                  className="group"
-                >
+                <Link key={r.id} to={`/articles/${r.slug}`}>
                   <div className="overflow-hidden rounded-xl mb-4">
                     <img
-                      src={
-                        r.image
-                          ? `${API_URL}${r.image}`
-                          : "/placeholder.jpg"
-                      }
-                      className="w-full h-48 object-cover group-hover:scale-105 transition"
+                      src={r.image || "/placeholder.jpg"}
+                      className="w-full h-48 object-cover"
                     />
                   </div>
-                  <h3 className="font-semibold group-hover:text-primary">
-                    {r.title}
-                  </h3>
+
+                  <h3 className="font-semibold">{r.title}</h3>
                 </Link>
               ))}
             </div>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { loginAdmin } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -18,25 +18,22 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (!res.ok) {
+      if (error) {
         alert("Email atau password salah");
         return;
       }
 
-      const data = await res.json();
-
-      // 🔑 SIMPAN SESSION DENGAN EXPIRY
-      loginAdmin(data);
-
-      navigate("/admin");
-    } catch {
-      alert("Gagal terhubung ke server");
+      if (data.session) {
+        navigate("/admin");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Gagal login");
     } finally {
       setLoading(false);
     }

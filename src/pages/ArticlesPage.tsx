@@ -3,6 +3,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ArticleCard, { Article } from "@/components/ArticleCard";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -13,32 +14,49 @@ const ArticlesPage = () => {
   const [loading, setLoading] = useState(true);
 
   /* =======================
-   * FETCH ARTICLES (SEARCH)
+   * FETCH ARTICLES
    * ======================= */
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
+    const fetchArticles = async () => {
+      setLoading(true);
 
-    fetch(`/api/articles?search=${encodeURIComponent(search)}`, {
-      signal: controller.signal,
-    })
-      .then((r) => r.json())
-      .then((data: Article[]) => {
-        // ✅ ONLY PUBLISHED ARTICLES
-        const published = data.filter(
-          (a: any) => a.status === "published"
-        );
+      let query = supabase
+        .from("articles")
+        .select(`
+          *,
+          categories(name)
+        `)
+        .eq("status", "published")
+        .order("created_at", { ascending: false });
 
-        setArticles(published);
+      if (search) {
+        query = query.ilike("title", `%${search}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error(error);
+        setArticles([]);
+      } else {
+        const formatted =
+          data?.map((a: any) => ({
+            ...a,
+            category: a.categories?.name,
+          })) || [];
+
+        setArticles(formatted);
         setPage(1);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      }
 
-    return () => controller.abort();
+      setLoading(false);
+    };
+
+    fetchArticles();
   }, [search]);
 
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
+
   const paginated = articles.slice(
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE
@@ -49,11 +67,13 @@ const ArticlesPage = () => {
       <Navbar />
 
       <div className="container mx-auto px-4 md:px-8 py-12">
+
         {/* HEADER */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold mb-2">
             All Articles
           </h1>
+
           <p className="text-muted-foreground">
             Explore our latest stories, insights, and ideas.
           </p>
@@ -91,6 +111,7 @@ const ArticlesPage = () => {
             {/* PAGINATION */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-2 mt-12">
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -100,23 +121,16 @@ const ArticlesPage = () => {
                   Prev
                 </Button>
 
-                {Array.from(
-                  { length: totalPages },
-                  (_, i) => (
-                    <Button
-                      key={i}
-                      size="sm"
-                      variant={
-                        page === i + 1
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => setPage(i + 1)}
-                    >
-                      {i + 1}
-                    </Button>
-                  )
-                )}
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    size="sm"
+                    variant={page === i + 1 ? "default" : "outline"}
+                    onClick={() => setPage(i + 1)}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
 
                 <Button
                   variant="outline"
@@ -126,10 +140,12 @@ const ArticlesPage = () => {
                 >
                   Next
                 </Button>
+
               </div>
             )}
           </>
         )}
+
       </div>
 
       <Footer />

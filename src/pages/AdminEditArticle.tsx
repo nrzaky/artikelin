@@ -3,20 +3,19 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { supabase } from "@/lib/supabase";
 
 type Category = {
   id: number;
   name: string;
 };
 
-const API_URL = "http://localhost:3001";
-
 const AdminEditArticle = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState(""); // HTML
+  const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [categories, setCategories] = useState<Category[]>([]);
@@ -31,23 +30,37 @@ const AdminEditArticle = () => {
    * FETCH DATA
    * ======================= */
   useEffect(() => {
-    Promise.all([
-      fetch("/api/categories").then((r) => r.json()),
-      fetch(`/api/articles/${id}`).then((r) => r.json()),
-    ])
-      .then(([cats, article]) => {
-        setCategories(cats);
+    const loadData = async () => {
+      const { data: cats } = await supabase
+        .from("categories")
+        .select("*");
+
+      const { data: article } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      setCategories(cats || []);
+
+      if (article) {
         setTitle(article.title);
-        setContent(article.content); // HTML
+        setContent(article.content);
         setCategoryId(String(article.category_id));
-        setStatus(article.status ?? "draft");
-        setPreview(article.image ? API_URL + article.image : null);
-      })
-      .finally(() => setLoading(false));
+        setStatus(article.status);
+        setPreview(article.image);
+        setMetaTitle(article.meta_title || "");
+        setMetaDescription(article.meta_description || "");
+      }
+
+      setLoading(false);
+    };
+
+    loadData();
   }, [id]);
 
   /* =======================
-   * SUBMIT UPDATE
+   * UPDATE ARTICLE
    * ======================= */
   const submit = async () => {
     if (!title || !content || !categoryId) {
@@ -55,29 +68,47 @@ const AdminEditArticle = () => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("content", content);
-    formData.append("category_id", categoryId);
-    formData.append("status", status);
-    formData.append("author", "Admin");
-    formData.append("meta_title", metaTitle);
-    formData.append("meta_description", metaDescription);
-
-    if (image) {
-      formData.append("image", image);
-    }
-
     try {
       setSaving(true);
 
-      await fetch(`/api/articles/${id}?admin=true`, {
-        method: "PUT",
-        body: formData,
-      });
+      let imageUrl = preview;
+
+      if (image) {
+        const fileName = `${Date.now()}-${image.name}`;
+
+        await supabase.storage
+          .from("articles")
+          .upload(fileName, image);
+
+        const { data } = supabase.storage
+          .from("articles")
+          .getPublicUrl(fileName);
+
+        imageUrl = data.publicUrl;
+      }
+
+      const slug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
+      await supabase
+        .from("articles")
+        .update({
+          title,
+          slug,
+          content,
+          category_id: Number(categoryId),
+          status,
+          image: imageUrl,
+          meta_title: metaTitle,
+          meta_description: metaDescription,
+        })
+        .eq("id", id);
 
       navigate("/admin");
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert("Gagal mengupdate artikel");
     } finally {
       setSaving(false);
@@ -94,7 +125,6 @@ const AdminEditArticle = () => {
 
   return (
     <div className="container max-w-3xl py-10">
-      {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold mb-1">
           Edit Article
@@ -104,7 +134,6 @@ const AdminEditArticle = () => {
         </p>
       </div>
 
-      {/* TITLE */}
       <input
         className="w-full mb-4 p-3 border rounded-md"
         placeholder="Article title"
@@ -112,7 +141,6 @@ const AdminEditArticle = () => {
         onChange={(e) => setTitle(e.target.value)}
       />
 
-       {/* SLUG */}
       <input
         className="w-full mb-3 p-3 border rounded-md"
         placeholder="Meta Title (SEO)"
@@ -127,7 +155,6 @@ const AdminEditArticle = () => {
         onChange={(e) => setMetaDescription(e.target.value)}
       />
 
-      {/* CATEGORY */}
       <select
         className="w-full mb-4 p-3 border rounded-md"
         value={categoryId}
@@ -141,7 +168,6 @@ const AdminEditArticle = () => {
         ))}
       </select>
 
-      {/* STATUS */}
       <select
         className="w-full mb-4 p-3 border rounded-md"
         value={status}
@@ -153,7 +179,6 @@ const AdminEditArticle = () => {
         <option value="published">Published</option>
       </select>
 
-      {/* RICH TEXT EDITOR */}
       <div className="mb-6">
         <label className="block font-medium mb-2">
           Content
@@ -163,28 +188,16 @@ const AdminEditArticle = () => {
           theme="snow"
           value={content}
           onChange={setContent}
-          placeholder="Tulis artikel di sini..."
-          modules={{
-            toolbar: [
-              [{ header: [1, 2, 3, false] }],
-              ["bold", "italic", "underline", "strike"],
-              [{ list: "ordered" }, { list: "bullet" }],
-              ["link"],
-              [{ align: [] }],
-              ["clean"],
-            ],
-          }}
         />
       </div>
 
-      {/* IMAGE UPLOAD */}
       <div className="mb-6">
         <label className="block text-sm font-medium mb-2">
           Featured Image
         </label>
 
         <div
-          className="cursor-pointer border-2 border-dashed rounded-md p-6 text-center hover:border-primary transition"
+          className="cursor-pointer border-2 border-dashed rounded-md p-6 text-center"
           onClick={() =>
             document.getElementById("editImageInput")?.click()
           }
@@ -192,18 +205,12 @@ const AdminEditArticle = () => {
           {preview ? (
             <img
               src={preview}
-              alt="Preview"
               className="mx-auto max-h-60 object-cover rounded-md"
             />
           ) : (
-            <div className="text-muted-foreground">
-              <p className="font-medium">
-                Klik untuk upload gambar
-              </p>
-              <p className="text-xs mt-1">
-                PNG, JPG, JPEG (max 2MB)
-              </p>
-            </div>
+            <p className="text-muted-foreground">
+              Klik untuk upload gambar
+            </p>
           )}
         </div>
 
@@ -222,7 +229,6 @@ const AdminEditArticle = () => {
         />
       </div>
 
-      {/* ACTION */}
       <div className="flex gap-2">
         <Button onClick={submit} disabled={saving}>
           {saving
