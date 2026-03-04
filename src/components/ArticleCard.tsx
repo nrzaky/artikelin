@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 export type Article = {
   id: number;
   title: string;
+  slug: string;
   image?: string;
   category?: string;
   excerpt?: string;
@@ -18,7 +19,7 @@ const API_URL = "http://localhost:3001";
 const ArticleCard = ({ article }: { article: Article }) => {
   return (
     <Link
-      to={`/articles/${article.id}`}
+      to={`/articles/${article.slug}`}
       className="
         group
         block

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
 
 type Category = {
   id: number;
@@ -12,12 +13,15 @@ const AdminCreateArticle = () => {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState(""); // HTML
   const [categoryId, setCategoryId] = useState("");
+  const [status, setStatus] = useState<"draft" | "published">("draft");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
 
   /* =======================
    * FETCH CATEGORIES
@@ -30,46 +34,54 @@ const AdminCreateArticle = () => {
   }, []);
 
   /* =======================
-   * SUBMIT ARTICLE
+   * SUBMIT
    * ======================= */
-    const submit = async () => {
+  const submit = async () => {
     if (!title || !content || !categoryId) {
-        alert("Judul, konten, dan kategori wajib diisi");
-        return;
+      alert("Judul, konten, dan kategori wajib diisi");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("content", content); // HTML dari Quill
+    formData.append("category_id", categoryId);
+    formData.append("status", status);
+    formData.append("author", "Admin");
+    formData.append("meta_title", metaTitle);
+    formData.append("meta_description", metaDescription);
+
+    if (image) {
+      formData.append("image", image);
     }
 
     try {
-        setLoading(true);
+      setLoading(true);
 
-        const formData = new FormData();
-        formData.append("title", title);
-        formData.append("content", content);
-        formData.append("category_id", categoryId);
-        formData.append("author", "Admin");
-
-        if (image) {
-        formData.append("image", image); 
-        }
-
-        await fetch("/api/articles", {
+      await fetch("/api/articles", {
         method: "POST",
-        body: formData, 
-        });
+        body: formData,
+      });
 
-        navigate("/admin");
-    } catch (err) {
-        alert("Gagal menyimpan artikel");
+      navigate("/admin");
+    } catch {
+      alert("Gagal menyimpan artikel");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    };
+  };
 
-  /* =======================
-   * RENDER
-   * ======================= */
   return (
     <div className="container max-w-3xl py-10">
-      <h1 className="text-2xl font-bold mb-6">New Article</h1>
+      {/* HEADER */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-extrabold mb-1">
+          New Article
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Create article as draft or publish directly
+        </p>
+      </div>
 
       {/* TITLE */}
       <input
@@ -77,6 +89,21 @@ const AdminCreateArticle = () => {
         placeholder="Article title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+      />
+
+      {/* SLUG */}
+      <input
+        className="w-full mb-3 p-3 border rounded-md"
+        placeholder="Meta Title (SEO)"
+        value={metaTitle}
+        onChange={(e) => setMetaTitle(e.target.value)}
+      />
+
+      <textarea
+        className="w-full mb-4 p-3 border rounded-md h-24"
+        placeholder="Meta Description (SEO)"
+        value={metaDescription}
+        onChange={(e) => setMetaDescription(e.target.value)}
       />
 
       {/* CATEGORY */}
@@ -93,63 +120,85 @@ const AdminCreateArticle = () => {
         ))}
       </select>
 
-      {/* CONTENT */}
-      <textarea
-        className="w-full mb-6 p-3 border rounded-md h-52"
-        placeholder="Write your article content here..."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-      />
-
-{/* IMAGE UPLOAD */}
-<div className="mb-6">
-  <label className="block text-sm font-medium mb-2">
-    Featured Image
-  </label>
-
-  <div
-    onClick={() =>
-      document.getElementById("imageInput")?.click()
-    }
-    className="cursor-pointer border-2 border-dashed rounded-md p-6 text-center hover:border-primary transition"
-  >
-    {!preview ? (
-      <div className="text-muted-foreground">
-        <p className="font-medium">
-          Klik untuk upload gambar
-        </p>
-        <p className="text-xs mt-1">
-          PNG, JPG, JPEG (max 2MB)
-        </p>
-      </div>
-    ) : (
-      <img
-        src={preview}
-        alt="Preview"
-        className="mx-auto max-h-60 object-cover rounded-md"
-      />
-    )}
-  </div>
-
-    <input
-        id="imageInput"
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setImage(file);
-            setPreview(URL.createObjectURL(file));
+      {/* STATUS */}
+      <select
+        className="w-full mb-4 p-3 border rounded-md"
+        value={status}
+        onChange={(e) =>
+          setStatus(e.target.value as "draft" | "published")
         }
-        }}
-    />
-    </div>
+      >
+        <option value="draft">Draft</option>
+        <option value="published">Publish</option>
+      </select>
+
+      {/* RICH TEXT EDITOR */}
+      <div className="mb-6">
+        <label className="block font-medium mb-2">
+          Content
+        </label>
+
+        <ReactQuill
+          theme="snow"
+          value={content}
+          onChange={setContent}
+          placeholder="Tulis artikel di sini..."
+          modules={{
+            toolbar: [
+              [{ header: [1, 2, 3, false] }],
+              ["bold", "italic", "underline", "strike"],
+              [{ list: "ordered" }, { list: "bullet" }],
+              ["link"],
+              [{ align: [] }],
+              ["clean"],
+            ],
+          }}
+        />
+      </div>
+
+      {/* IMAGE UPLOAD */}
+      <div className="mb-6">
+        <div
+          className="cursor-pointer border-2 border-dashed rounded-md p-6 text-center hover:border-primary transition"
+          onClick={() =>
+            document.getElementById("imageInput")?.click()
+          }
+        >
+          {preview ? (
+            <img
+              src={preview}
+              className="mx-auto max-h-60 rounded-md object-cover"
+            />
+          ) : (
+            <p className="text-muted-foreground">
+              Klik untuk upload gambar
+            </p>
+          )}
+        </div>
+
+        <input
+          id="imageInput"
+          type="file"
+          className="hidden"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              setImage(file);
+              setPreview(URL.createObjectURL(file));
+            }
+          }}
+        />
+      </div>
 
       {/* ACTION */}
       <div className="flex gap-2">
         <Button onClick={submit} disabled={loading}>
-          {loading ? "Publishing..." : "Publish"}
+          {loading
+            ? "Saving..."
+            : status === "draft"
+            ? "Save Draft"
+            : "Publish"}
         </Button>
 
         <Button

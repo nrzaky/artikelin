@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { loginAdmin } from "@/lib/auth";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -18,10 +19,10 @@ const AdminLogin = () => {
 
     try {
       const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
       if (!res.ok) {
         alert("Email atau password salah");
@@ -30,11 +31,11 @@ const AdminLogin = () => {
 
       const data = await res.json();
 
-      // simpan data admin hasil backend
-      localStorage.setItem("admin", JSON.stringify(data));
+      // 🔑 SIMPAN SESSION DENGAN EXPIRY
+      loginAdmin(data);
 
       navigate("/admin");
-    } catch (err) {
+    } catch {
       alert("Gagal terhubung ke server");
     } finally {
       setLoading(false);
@@ -45,9 +46,6 @@ const AdminLogin = () => {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-soft">
         <h1 className="text-2xl font-bold mb-2 text-center">Admin Login</h1>
-        <p className="text-sm text-muted-foreground mb-6 text-center">
-          Only authorized administrators
-        </p>
 
         <input
           type="email"
@@ -65,13 +63,16 @@ const AdminLogin = () => {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <Button className="w-full" onClick={handleLogin} disabled={loading}>
+        <Button
+          className="w-full"
+          onClick={handleLogin}
+          disabled={loading}
+        >
           {loading ? "Logging in..." : "Login"}
         </Button>
       </div>
     </div>
   );
-  console.log({ email, password });
 };
 
 export default AdminLogin;

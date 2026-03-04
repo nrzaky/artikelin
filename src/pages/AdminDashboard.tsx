@@ -19,12 +19,16 @@ import {
 type Article = {
   id: number;
   title: string;
+  slug: string;
   content: string;
-  image?: string;
-  category?: string;
-  author?: string;
-  created_at?: string;
+  image?: string | null;
+  category?: string | null;
+  author?: string | null;
+  created_at?: string | null;
+  status: "draft" | "published";
 };
+
+const API_URL = "http://localhost:3001";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -33,6 +37,7 @@ const AdminDashboard = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoverImage, setHoverImage] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
 
   /* =======================
    * AUTH GUARD
@@ -49,7 +54,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const res = await fetch("/api/articles");
+        const res = await fetch("/api/articles?admin=true");
         const data = await res.json();
         setArticles(data);
       } catch (err) {
@@ -66,19 +71,31 @@ const AdminDashboard = () => {
    * DELETE ARTICLE
    * ======================= */
   const deleteArticle = async (id: number) => {
-    const confirmDelete = confirm("Yakin ingin menghapus artikel ini?");
-    if (!confirmDelete) return;
+    if (!confirm("Yakin ingin menghapus artikel ini?")) return;
 
     try {
-      await fetch(`/api/articles/${id}`, {
-        method: "DELETE",
-      });
-
+      await fetch(`/api/articles/${id}`, { method: "DELETE" });
       setArticles((prev) => prev.filter((a) => a.id !== id));
-    } catch (err) {
+    } catch {
       alert("Gagal menghapus artikel");
     }
   };
+
+  /* =======================
+   * FILTERED DATA
+   * ======================= */
+  const filteredArticles =
+    filter === "all"
+      ? articles
+      : articles.filter((a) => a.status === filter);
+
+  const publishedCount = articles.filter(
+    (a) => a.status === "published"
+  ).length;
+
+  const draftCount = articles.filter(
+    (a) => a.status === "draft"
+  ).length;
 
   /* =======================
    * RENDER
@@ -119,10 +136,10 @@ const AdminDashboard = () => {
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Stat label="Total Articles" value={articles.length} />
-          <Stat label="Published" value={articles.length} />
-          <Stat label="Drafts" value={0} />
+          <Stat label="Published" value={publishedCount} />
+          <Stat label="Drafts" value={draftCount} />
           <Stat
             label="Categories"
             value={
@@ -135,6 +152,20 @@ const AdminDashboard = () => {
           />
         </div>
 
+        {/* FILTER */}
+        <div className="flex gap-2 mb-4">
+          {(["all", "published", "draft"] as const).map((f) => (
+            <Button
+              key={f}
+              size="sm"
+              variant={filter === f ? "default" : "outline"}
+              onClick={() => setFilter(f)}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Button>
+          ))}
+        </div>
+
         {/* TABLE */}
         <div className="rounded-xl border bg-card shadow-soft">
           <Table>
@@ -142,10 +173,16 @@ const AdminDashboard = () => {
               <TableRow>
                 <TableHead className="w-[80px]">Image</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead className="hidden md:table-cell">Author</TableHead>
-                <TableHead className="hidden md:table-cell">Category</TableHead>
-                <TableHead className="hidden sm:table-cell">Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Category
+                </TableHead>
+                <TableHead className="hidden sm:table-cell">
+                  Date
+                </TableHead>
+                <TableHead className="text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
 
@@ -158,7 +195,7 @@ const AdminDashboard = () => {
                 </TableRow>
               )}
 
-              {!loading && articles.length === 0 && (
+              {!loading && filteredArticles.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-10">
                     No articles found
@@ -166,92 +203,92 @@ const AdminDashboard = () => {
                 </TableRow>
               )}
 
-              {articles.map((article) => (
-                <TableRow key={article.id}>
-                  <TableCell className="relative">
-                    <img
-                      src={
-                        article.image
-                          ? `http://localhost:3001${article.image}`
-                          : "/placeholder.jpg"
-                      }
-                      alt={article.title}
-                      className="w-14 h-10 rounded-md object-cover border cursor-pointer"
-                      onMouseEnter={() =>
-                        article.image &&
-                        setHoverImage(`http://localhost:3001${article.image}`)
-                      }
-                      onMouseLeave={() => setHoverImage(null)}
-                    />
+              {filteredArticles.map((article) => {
+                const imageUrl = article.image
+                  ? `${API_URL}${article.image}`
+                  : null;
 
-                    {hoverImage === `http://localhost:3001${article.image}` && (
-                      <div className="absolute left-16 top-0 z-[9999]">
-                        <img
-                          src={hoverImage}
-                          className="
-                            w-80
-                            max-h-80
-                            object-cover
-                            rounded-xl
-                            shadow-2xl
-                            border
-                            bg-white
-                            transition
-                            duration-200
-                            scale-95
-                            hover:scale-100
-                          "
-                        />
-                      </div>
-                    )}
-                  </TableCell>
+                return (
+                  <TableRow key={article.id}>
+                    {/* IMAGE */}
+                    <TableCell className="relative">
+                      <img
+                        src={imageUrl ?? "/placeholder.jpg"}
+                        className="w-14 h-10 rounded-md object-cover border cursor-pointer"
+                        onMouseEnter={() =>
+                          imageUrl && setHoverImage(imageUrl)
+                        }
+                        onMouseLeave={() => setHoverImage(null)}
+                      />
 
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    {article.title}
-                  </TableCell>
+                      {hoverImage === imageUrl && (
+                        <div className="absolute left-16 top-0 z-50">
+                          <img
+                            src={hoverImage}
+                            className="w-80 max-h-80 object-cover rounded-xl shadow-2xl border bg-white"
+                          />
+                        </div>
+                      )}
+                    </TableCell>
 
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {article.author || "-"}
-                  </TableCell>
+                    {/* TITLE */}
+                    <TableCell className="font-medium max-w-[220px] truncate">
+                      {article.title}
+                    </TableCell>
 
-                  <TableCell className="hidden md:table-cell">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-badge text-badge-foreground">
-                      {article.category ?? "Uncategorized"}
-                    </span>
-                  </TableCell>
-
-                  <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                    {article.created_at
-                      ? new Date(article.created_at).toLocaleDateString()
-                      : "-"}
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link to={`/articles/${article.id}`}>
-                        <Button variant="ghost" size="icon">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-
-                      <Link to={`/admin/articles/edit/${article.id}`}>
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </Link>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => deleteArticle(article.id)}
+                    {/* STATUS */}
+                    <TableCell>
+                      <span
+                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          article.status === "published"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {article.status}
+                      </span>
+                    </TableCell>
+
+                    {/* CATEGORY */}
+                    <TableCell className="hidden md:table-cell">
+                      {article.category || "-"}
+                    </TableCell>
+
+                    {/* DATE */}
+                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                      {article.created_at
+                        ? new Date(article.created_at).toLocaleDateString()
+                        : "-"}
+                    </TableCell>
+
+                    {/* ACTION */}
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Link to={`/articles/${article.slug}`}>
+                          <Button variant="ghost" size="icon">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+
+                        <Link to={`/admin/articles/edit/${article.id}`}>
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => deleteArticle(article.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -267,7 +304,9 @@ const AdminDashboard = () => {
  * ======================= */
 const Stat = ({ label, value }: { label: string; value: number }) => (
   <div className="rounded-xl bg-card shadow-soft p-5">
-    <p className="text-sm text-muted-foreground mb-1">{label}</p>
+    <p className="text-sm text-muted-foreground mb-1">
+      {label}
+    </p>
     <p className="text-2xl font-bold">{value}</p>
   </div>
 );

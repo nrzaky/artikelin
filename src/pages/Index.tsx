@@ -5,7 +5,6 @@ import { ArrowRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ArticleCard, { Article } from "@/components/ArticleCard";
-import heroBanner from "@/assets/hero-banner.jpg";
 import { Button } from "@/components/ui/button";
 
 const API_URL = "http://localhost:3001";
@@ -20,11 +19,15 @@ const Index = () => {
   useEffect(() => {
     fetch("/api/articles")
       .then((res) => res.json())
-      .then((data) => {
-        setArticles(data);
-        setLoading(false);
+      .then((data: any[]) => {
+        // ✅ ONLY PUBLISHED ARTICLES
+        const published = data.filter(
+          (a) => a.status === "published"
+        );
+
+        setArticles(published);
       })
-      .catch(() => setLoading(false));
+      .finally(() => setLoading(false));
   }, []);
 
   const featured = articles[0];
@@ -34,31 +37,29 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
 
-    {/* HERO */}
-    <section className="relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-secondary" />
+      {/* HERO */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-secondary" />
 
-      {/* Decorative blur */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
 
-      <div className="relative container mx-auto px-4 md:px-8 py-24 md:py-36 text-center text-primary-foreground">
-        <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
-          Artikelin
-        </h1>
+        <div className="relative container mx-auto px-4 md:px-8 py-24 md:py-36 text-center text-primary-foreground">
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
+            Artikelin
+          </h1>
 
-        <p className="text-lg md:text-xl text-primary-foreground/80 max-w-xl mx-auto mb-8">
-          Stories, insights, and ideas — crafted for the curious mind.
-        </p>
+          <p className="text-lg md:text-xl text-primary-foreground/80 max-w-xl mx-auto mb-8">
+            Stories, insights, and ideas — crafted for the curious mind.
+          </p>
 
-        <Link to="/articles">
-          <Button size="lg" className="shadow-lg">
-            Browse Articles <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </Link>
-      </div>
-    </section>
+          <Link to="/articles">
+            <Button size="lg" className="shadow-lg">
+              Browse Articles <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+        </div>
+      </section>
 
       {/* FEATURED */}
       <section className="container mx-auto px-4 md:px-8 py-16">
@@ -72,7 +73,7 @@ const Index = () => {
           </p>
         ) : featured ? (
           <Link
-            to={`/articles/${featured.id}`}
+            to={`/articles/${featured.slug}`}
             className="group block rounded-xl overflow-hidden bg-card shadow-card hover:shadow-elevated transition-all duration-300"
           >
             <div className="grid md:grid-cols-2">
@@ -106,9 +107,7 @@ const Index = () => {
 
                 {featured.created_at && (
                   <div className="text-sm text-muted-foreground">
-                    {new Date(
-                      featured.created_at
-                    ).toLocaleDateString()}
+                    {new Date(featured.created_at).toLocaleDateString()}
                   </div>
                 )}
               </div>
@@ -116,7 +115,7 @@ const Index = () => {
           </Link>
         ) : (
           <p className="text-muted-foreground">
-            No articles available.
+            No published articles available.
           </p>
         )}
       </section>
@@ -142,10 +141,7 @@ const Index = () => {
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {recent.map((article) => (
-              <ArticleCard
-                key={article.id}
-                article={article}
-              />
+              <ArticleCard key={article.id} article={article} />
             ))}
           </div>
         )}
