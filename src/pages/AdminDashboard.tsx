@@ -42,10 +42,16 @@ const AdminDashboard = () => {
    * AUTH GUARD
    * ======================= */
   useEffect(() => {
+  const check = async () => {
+    const admin = await isAdmin();
+
     if (!admin) {
       navigate("/admin/login");
     }
-  }, [admin, navigate]);
+  };
+
+  check();
+}, []);
 
   /* =======================
    * FETCH ARTICLES
