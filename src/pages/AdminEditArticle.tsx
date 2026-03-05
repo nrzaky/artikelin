@@ -11,108 +11,203 @@ type Category = {
 };
 
 const AdminEditArticle = () => {
+
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [status, setStatus] = useState<"draft" | "published">("draft");
+
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+
+  const [status, setStatus] = useState<"draft" | "published">("draft");
+
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   /* =======================
-   * FETCH DATA
-   * ======================= */
+     LOAD DATA
+  ======================= */
+
   useEffect(() => {
+
     const loadData = async () => {
+
       const { data: cats } = await supabase
         .from("categories")
-        .select("*");
-
-      const { data: article } = await supabase
-        .from("articles")
         .select("*")
-        .eq("id", id)
-        .single();
+        .order("id");
 
       setCategories(cats || []);
 
+      const { data: article } = await supabase
+        .from("articles")
+        .select(`
+          *,
+          article_categories (
+            category_id
+          )
+        `)
+        .eq("id", id)
+        .single();
+
       if (article) {
+
         setTitle(article.title);
         setContent(article.content);
-        setCategoryId(String(article.category_id));
         setStatus(article.status);
         setPreview(article.image);
+
         setMetaTitle(article.meta_title || "");
         setMetaDescription(article.meta_description || "");
+
+        const catIds = article.article_categories.map(
+          (c: any) => c.category_id
+        );
+
+        setSelectedCategories(catIds);
+
       }
 
       setLoading(false);
+
     };
 
     loadData();
+
   }, [id]);
 
   /* =======================
-   * UPDATE ARTICLE
-   * ======================= */
+     UPDATE ARTICLE
+  ======================= */
+
   const submit = async () => {
-    if (!title || !content || !categoryId) {
+
+    if (!title || !content || selectedCategories.length === 0) {
       alert("Judul, konten, dan kategori wajib diisi");
       return;
     }
 
     try {
+
       setSaving(true);
 
       let imageUrl = preview;
 
-      if (image) {
-        const fileName = `${Date.now()}-${image.name}`;
+      /* =======================
+         UPLOAD IMAGE
+      ======================= */
 
-        await supabase.storage
+      if (image) {
+
+        if (preview) {
+
+          try {
+
+            const oldPath =
+              preview.split("/storage/v1/object/public/articles/")[1];
+
+            if (oldPath) {
+
+              await supabase.storage
+                .from("articles")
+                .remove([oldPath]);
+
+            }
+
+          } catch (err) {
+            console.warn("Gagal hapus gambar lama");
+          }
+
+        }
+
+        const cleanName = image.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9.-]/g, "");
+
+        const fileName = `articles/${Date.now()}-${cleanName}`;
+
+        const { error } = await supabase.storage
           .from("articles")
           .upload(fileName, image);
+
+        if (error) throw error;
 
         const { data } = supabase.storage
           .from("articles")
           .getPublicUrl(fileName);
 
         imageUrl = data.publicUrl;
+
       }
+
+      /* =======================
+         CREATE SLUG
+      ======================= */
 
       const slug = title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
-      await supabase
+      /* =======================
+         UPDATE ARTICLE
+      ======================= */
+
+      const { error } = await supabase
         .from("articles")
         .update({
           title,
           slug,
           content,
-          category_id: Number(categoryId),
           status,
           image: imageUrl,
           meta_title: metaTitle,
-          meta_description: metaDescription,
+          meta_description: metaDescription
         })
         .eq("id", id);
 
+      if (error) throw error;
+
+      /* =======================
+         UPDATE CATEGORY RELATION
+      ======================= */
+
+      await supabase
+        .from("article_categories")
+        .delete()
+        .eq("article_id", id);
+
+      const relations = selectedCategories.map(catId => ({
+        article_id: Number(id),
+        category_id: catId
+      }));
+
+      await supabase
+        .from("article_categories")
+        .insert(relations);
+
       navigate("/admin");
+
     } catch (err) {
+
       console.error(err);
       alert("Gagal mengupdate artikel");
+
     } finally {
+
       setSaving(false);
+
     }
+
   };
 
   if (loading) {
@@ -124,15 +219,14 @@ const AdminEditArticle = () => {
   }
 
   return (
+
     <div className="container max-w-3xl py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold mb-1">
-          Edit Article
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Update article content, status, and featured image
-        </p>
-      </div>
+
+      <h1 className="text-3xl font-extrabold mb-6">
+        Edit Article
+      </h1>
+
+      {/* TITLE */}
 
       <input
         className="w-full mb-4 p-3 border rounded-md"
@@ -141,32 +235,80 @@ const AdminEditArticle = () => {
         onChange={(e) => setTitle(e.target.value)}
       />
 
+      {/* META TITLE */}
+
       <input
         className="w-full mb-3 p-3 border rounded-md"
-        placeholder="Meta Title (SEO)"
+        placeholder="Meta Title"
         value={metaTitle}
         onChange={(e) => setMetaTitle(e.target.value)}
       />
 
+      {/* META DESCRIPTION */}
+
       <textarea
-        className="w-full mb-4 p-3 border rounded-md h-24"
-        placeholder="Meta Description (SEO)"
+        className="w-full mb-4 p-3 border rounded-md"
+        placeholder="Meta Description"
         value={metaDescription}
         onChange={(e) => setMetaDescription(e.target.value)}
       />
 
-      <select
-        className="w-full mb-4 p-3 border rounded-md"
-        value={categoryId}
-        onChange={(e) => setCategoryId(e.target.value)}
-      >
-        <option value="">Pilih kategori</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      {/* MULTI CATEGORY */}
+
+      <div className="mb-6">
+
+        <label className="block font-medium mb-3">
+          Categories
+        </label>
+
+        <div className="flex flex-wrap gap-2">
+
+          {categories.map((cat) => {
+
+            const active = selectedCategories.includes(cat.id);
+
+            return (
+
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+
+                  setSelectedCategories((prev) =>
+                    prev.includes(cat.id)
+                      ? prev.filter((id) => id !== cat.id)
+                      : [...prev, cat.id]
+                  );
+
+                }}
+                className={`
+                  px-3
+                  py-1.5
+                  rounded-full
+                  text-sm
+                  border
+                  transition
+                  ${
+                    active
+                      ? "bg-primary text-white border-primary"
+                      : "bg-muted hover:bg-muted/70"
+                  }
+                `}
+              >
+
+                {cat.name}
+
+              </button>
+
+            );
+
+          })}
+
+        </div>
+
+      </div>
+
+      {/* STATUS */}
 
       <select
         className="w-full mb-4 p-3 border rounded-md"
@@ -179,75 +321,62 @@ const AdminEditArticle = () => {
         <option value="published">Published</option>
       </select>
 
-      <div className="mb-6">
-        <label className="block font-medium mb-2">
-          Content
-        </label>
+      {/* CONTENT */}
 
-        <ReactQuill
-          theme="snow"
-          value={content}
-          onChange={setContent}
+      <ReactQuill
+        value={content}
+        onChange={setContent}
+        className="mb-6"
+      />
+
+      {/* IMAGE */}
+
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => {
+
+          const file = e.target.files?.[0];
+
+          if (!file) return;
+
+          setImage(file);
+          setPreview(URL.createObjectURL(file));
+
+        }}
+      />
+
+      {preview && (
+        <img
+          src={preview}
+          className="mt-4 max-h-60 rounded-md"
         />
-      </div>
+      )}
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium mb-2">
-          Featured Image
-        </label>
+      {/* ACTION */}
 
-        <div
-          className="cursor-pointer border-2 border-dashed rounded-md p-6 text-center"
-          onClick={() =>
-            document.getElementById("editImageInput")?.click()
-          }
+      <div className="flex gap-2 mt-6">
+
+        <Button
+          onClick={submit}
+          disabled={saving}
         >
-          {preview ? (
-            <img
-              src={preview}
-              className="mx-auto max-h-60 object-cover rounded-md"
-            />
-          ) : (
-            <p className="text-muted-foreground">
-              Klik untuk upload gambar
-            </p>
-          )}
-        </div>
-
-        <input
-          id="editImageInput"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              setImage(file);
-              setPreview(URL.createObjectURL(file));
-            }
-          }}
-        />
-      </div>
-
-      <div className="flex gap-2">
-        <Button onClick={submit} disabled={saving}>
-          {saving
-            ? "Updating..."
-            : status === "draft"
-            ? "Save Draft"
-            : "Update & Publish"}
+          {saving ? "Updating..." : "Update Article"}
         </Button>
 
         <Button
           variant="outline"
           onClick={() => navigate("/admin")}
-          disabled={saving}
         >
           Cancel
         </Button>
+
       </div>
+
     </div>
+
   );
+
 };
 
 export default AdminEditArticle;

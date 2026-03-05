@@ -1,62 +1,51 @@
 import { Link } from "react-router-dom";
 
-/* =======================
- * TYPE (API FRIENDLY)
- * ======================= */
 export type Article = {
+  categories: any;
   id: number;
   title: string;
   slug: string;
-  image?: string;
+  image?: string | null;
   category?: string;
   excerpt?: string;
   readTime?: string;
   created_at?: string;
 };
 
-const API_URL = "http://localhost:3001";
-
 const ArticleCard = ({ article }: { article: Article }) => {
+
+  console.log("ARTICLE IMAGE:", article.image)
+  const imageUrl = article.image
+    ? article.image
+    : "/placeholder.jpg";
+
   return (
     <Link
       to={`/articles/${article.slug}`}
-      className="
-        group
-        block
-        rounded-xl
-        overflow-hidden
-        bg-card
-        shadow-card
-        hover:shadow-elevated
-        transition-all
-        duration-300
-      "
+      className="group block rounded-xl overflow-hidden bg-card shadow-card hover:shadow-elevated transition-all duration-300"
     >
+
       {/* IMAGE */}
+
       <div className="aspect-[16/10] overflow-hidden bg-muted">
         <img
-          src={
-            article.image
-              ? `${API_URL}${article.image}`
-              : "/placeholder.jpg"
-          }
+          src={imageUrl}
           alt={article.title}
-          className="
-            w-full
-            h-full
-            object-cover
-            transition-transform
-            duration-500
-            group-hover:scale-105
-          "
+          className="w-full h-full object-cover group-hover:scale-105 transition"
           loading="lazy"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).src =
+              "/placeholder.jpg";
+          }}
         />
       </div>
 
       {/* CONTENT */}
+
       <div className="p-5">
-        {/* META */}
+
         <div className="flex items-center gap-3 mb-3">
+
           {article.category && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-badge text-badge-foreground">
               {article.category}
@@ -68,19 +57,20 @@ const ArticleCard = ({ article }: { article: Article }) => {
               {article.readTime}
             </span>
           )}
+
         </div>
 
-        {/* TITLE */}
-        <h3 className="text-lg font-bold leading-snug mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="text-lg font-bold mb-2 line-clamp-2 group-hover:text-primary transition-colors">
           {article.title}
         </h3>
 
-        {/* EXCERPT */}
-        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+        <p className="text-sm text-muted-foreground line-clamp-2">
           {article.excerpt ??
             "Klik untuk membaca artikel selengkapnya."}
         </p>
+
       </div>
+
     </Link>
   );
 };

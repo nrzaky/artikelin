@@ -14,45 +14,61 @@ const ArticlesPage = () => {
   const [loading, setLoading] = useState(true);
 
   /* =======================
-   * FETCH ARTICLES
-   * ======================= */
+     FETCH ARTICLES
+  ======================= */
+
   useEffect(() => {
     const fetchArticles = async () => {
+
       setLoading(true);
 
-      let query = supabase
+      const { data, error } = await supabase
         .from("articles")
         .select(`
           *,
-          categories(name)
+          article_categories (
+            categories (
+              id,
+              name
+            )
+          )
         `)
         .eq("status", "published")
         .order("created_at", { ascending: false });
 
-      if (search) {
-        query = query.ilike("title", `%${search}%`);
-      }
-
-      const { data, error } = await query;
-
       if (error) {
         console.error(error);
         setArticles([]);
-      } else {
-        const formatted =
-          data?.map((a: any) => ({
-            ...a,
-            category: a.categories?.name,
-          })) || [];
-
-        setArticles(formatted);
-        setPage(1);
+        setLoading(false);
+        return;
       }
 
+      let formatted =
+        data?.map((a: any) => ({
+          ...a,
+          categories: a.article_categories
+            ?.map((c: any) => c.categories?.name)
+            .filter(Boolean)
+        })) || [];
+
+      /* SEARCH FILTER */
+
+      if (search) {
+
+        formatted = formatted.filter((a: any) =>
+          a.title.toLowerCase().includes(search.toLowerCase())
+        );
+
+      }
+
+      setArticles(formatted);
+      setPage(1);
       setLoading(false);
+
     };
 
     fetchArticles();
+
   }, [search]);
 
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
@@ -63,13 +79,17 @@ const ArticlesPage = () => {
   );
 
   return (
+
     <div className="min-h-screen bg-background">
+
       <Navbar />
 
       <div className="container mx-auto px-4 md:px-8 py-12">
 
         {/* HEADER */}
+
         <div className="mb-8">
+
           <h1 className="text-3xl font-extrabold mb-2">
             All Articles
           </h1>
@@ -77,9 +97,11 @@ const ArticlesPage = () => {
           <p className="text-muted-foreground">
             Explore our latest stories, insights, and ideas.
           </p>
+
         </div>
 
         {/* SEARCH */}
+
         <input
           type="text"
           placeholder="Search articles..."
@@ -89,27 +111,43 @@ const ArticlesPage = () => {
         />
 
         {/* CONTENT */}
+
         {loading ? (
+
           <p className="text-muted-foreground">
-            Searching articles...
+            Loading articles...
           </p>
+
         ) : paginated.length === 0 ? (
+
           <p className="text-muted-foreground">
             No articles found.
           </p>
+
         ) : (
+
           <>
+
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
               {paginated.map((article) => (
+
                 <ArticleCard
                   key={article.id}
-                  article={article}
+                  article={{
+                    ...article,
+                    image: article.image ?? "/placeholder.jpg",
+                  }}
                 />
+
               ))}
+
             </div>
 
             {/* PAGINATION */}
+
             {totalPages > 1 && (
+
               <div className="flex justify-center gap-2 mt-12">
 
                 <Button
@@ -122,6 +160,7 @@ const ArticlesPage = () => {
                 </Button>
 
                 {Array.from({ length: totalPages }, (_, i) => (
+
                   <Button
                     key={i}
                     size="sm"
@@ -130,6 +169,7 @@ const ArticlesPage = () => {
                   >
                     {i + 1}
                   </Button>
+
                 ))}
 
                 <Button
@@ -142,15 +182,21 @@ const ArticlesPage = () => {
                 </Button>
 
               </div>
+
             )}
+
           </>
+
         )}
 
       </div>
 
       <Footer />
+
     </div>
+
   );
+
 };
 
 export default ArticlesPage;

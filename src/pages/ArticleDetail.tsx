@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Twitter, Facebook, Link2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import Navbar from "@/components/Navbar";
@@ -13,7 +13,7 @@ type Article = {
   slug: string;
   content?: string | null;
   image?: string | null;
-  category?: string | null;
+  categories?: string[];
   author?: string | null;
   created_at?: string | null;
   status: "draft" | "published";
@@ -37,15 +37,21 @@ const ArticleDetail = () => {
   const [loading, setLoading] = useState(true);
 
   /* ================= FETCH ================= */
+
   useEffect(() => {
     const fetchArticle = async () => {
+
       if (!slug) return;
 
       const { data, error } = await supabase
         .from("articles")
         .select(`
           *,
-          categories(name)
+          article_categories (
+            categories (
+              name
+            )
+          )
         `)
         .eq("slug", slug)
         .single();
@@ -58,10 +64,14 @@ const ArticleDetail = () => {
 
       const formatted = {
         ...data,
-        category: data.categories?.name,
+        categories: data.article_categories
+          ?.map((c: any) => c.categories?.name)
+          .filter(Boolean),
       };
 
       setArticle(formatted);
+
+      /* RELATED */
 
       const { data: relatedData } = await supabase
         .from("articles")
@@ -80,6 +90,7 @@ const ArticleDetail = () => {
   }, [slug]);
 
   /* ================= READ TIME ================= */
+
   const readTime = useMemo(() => {
     if (!article?.content) return 0;
     const text = article.content.replace(/<[^>]+>/g, "");
@@ -88,6 +99,7 @@ const ArticleDetail = () => {
   }, [article]);
 
   /* ================= TOC ================= */
+
   const toc = useMemo(() => {
     if (!article?.content) return [];
     const matches = article.content.match(/<h2[^>]*>(.*?)<\/h2>/g) || [];
@@ -128,6 +140,7 @@ const ArticleDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
+
       <Helmet>
         <title>{article.meta_title || article.title}</title>
         <meta
@@ -146,7 +159,9 @@ const ArticleDetail = () => {
       <Navbar />
 
       {/* HERO */}
+
       <div className="relative h-[500px] overflow-hidden">
+
         <img
           src={article.image || "/placeholder.jpg"}
           className="w-full h-full object-cover"
@@ -155,33 +170,38 @@ const ArticleDetail = () => {
         <div className="absolute inset-0 bg-black/60" />
 
         <div className="absolute bottom-0 left-0 right-0 p-10 max-w-5xl mx-auto text-white">
-          {article.category && (
-            <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
-              {article.category}
-            </span>
-          )}
 
+          {article.categories?.length > 0 && (
+            <div className="flex gap-2 flex-wrap mb-3">
+              {article.categories.map((cat) => (
+                <span
+                  key={cat}
+                  className="bg-white/20 px-3 py-1 rounded-full text-sm"
+                >
+                  {cat}
+                </span>
+              ))}
+            </div>
+          )}
           <h1 className="text-4xl md:text-5xl font-extrabold mt-4 mb-4 leading-tight">
             {article.title}
           </h1>
-
           <div className="flex gap-6 text-sm text-white/80">
             {article.author && <span>{article.author}</span>}
-
             {article.created_at && (
               <span>
                 {new Date(article.created_at).toLocaleDateString()}
               </span>
             )}
-
             <span>{readTime} min read</span>
             <span>{article.views || 0} views</span>
           </div>
         </div>
       </div>
-
       {/* BODY */}
+
       <div className="mx-auto px-4 md:px-6 py-20 max-w-7xl">
+
         <div className="flex flex-col lg:flex-row gap-16 justify-center">
 
           <article className="w-full max-w-[70ch]">
@@ -201,11 +221,12 @@ const ArticleDetail = () => {
               }}
             />
           </article>
-
           {toc.length > 0 && (
             <aside className="hidden lg:block w-64 sticky top-32 h-fit">
               <div className="border rounded-xl p-6 bg-card">
-                <h3 className="font-semibold mb-4">On this page</h3>
+                <h3 className="font-semibold mb-4">
+                  On this page
+                </h3>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   {toc.map((item) => (
                     <li key={item.id}>{item.text}</li>
@@ -214,18 +235,17 @@ const ArticleDetail = () => {
               </div>
             </aside>
           )}
-
         </div>
       </div>
 
       {/* RELATED */}
+
       {related.length > 0 && (
         <div className="border-t py-20">
           <div className="container max-w-6xl mx-auto px-4">
             <h2 className="text-2xl font-bold mb-10">
               Related Articles
             </h2>
-
             <div className="grid md:grid-cols-3 gap-8">
               {related.map((r) => (
                 <Link key={r.id} to={`/articles/${r.slug}`}>
@@ -235,7 +255,6 @@ const ArticleDetail = () => {
                       className="w-full h-48 object-cover"
                     />
                   </div>
-
                   <h3 className="font-semibold">{r.title}</h3>
                 </Link>
               ))}
@@ -243,7 +262,6 @@ const ArticleDetail = () => {
           </div>
         </div>
       )}
-
       <Footer />
     </div>
   );

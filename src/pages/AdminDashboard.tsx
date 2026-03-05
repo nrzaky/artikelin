@@ -17,13 +17,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+/* =======================
+   TYPE
+======================= */
+
 type Article = {
   id: number;
   title: string;
   slug: string;
   content: string;
   image?: string | null;
-  category?: string | null;
+  categories?: string[];
   author?: string | null;
   created_at?: string | null;
   status: "draft" | "published";
@@ -31,38 +35,42 @@ type Article = {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const admin = isAdmin();
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoverImage, setHoverImage] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
+  const [filter, setFilter] =
+    useState<"all" | "published" | "draft">("all");
 
   /* =======================
-   * AUTH GUARD
-   * ======================= */
+     AUTH GUARD
+  ======================= */
+
   useEffect(() => {
-  const check = async () => {
-    const admin = await isAdmin();
+    const check = async () => {
+      const admin = await isAdmin();
+      if (!admin) navigate("/admin/login");
+    };
 
-    if (!admin) {
-      navigate("/admin/login");
-    }
-  };
-
-  check();
-}, []);
+    check();
+  }, []);
 
   /* =======================
-   * FETCH ARTICLES
-   * ======================= */
+     FETCH ARTICLES
+  ======================= */
+
   useEffect(() => {
     const fetchArticles = async () => {
       const { data, error } = await supabase
         .from("articles")
         .select(`
           *,
-          categories(name)
+          article_categories (
+            categories (
+              id,
+              name
+            )
+          )
         `)
         .order("created_at", { ascending: false });
 
@@ -74,7 +82,9 @@ const AdminDashboard = () => {
       const formatted =
         data?.map((a: any) => ({
           ...a,
-          category: a.categories?.name,
+          categories: a.article_categories
+            ?.map((c: any) => c.categories?.name)
+            .filter(Boolean),
         })) || [];
 
       setArticles(formatted);
@@ -85,27 +95,44 @@ const AdminDashboard = () => {
   }, []);
 
   /* =======================
-   * DELETE ARTICLE
-   * ======================= */
-  const deleteArticle = async (id: number) => {
+     DELETE ARTICLE
+  ======================= */
+
+  const deleteArticle = async (article: Article) => {
     if (!confirm("Yakin ingin menghapus artikel ini?")) return;
 
-    const { error } = await supabase
-      .from("articles")
-      .delete()
-      .eq("id", id);
+    try {
+      if (article.image) {
+        const path = article.image.split("/articles/")[1];
 
-    if (error) {
+        await supabase.storage
+          .from("articles")
+          .remove([path]);
+      }
+
+      const { error } = await supabase
+        .from("articles")
+        .delete()
+        .eq("id", article.id);
+
+      if (error) {
+        alert("Gagal menghapus artikel");
+        return;
+      }
+
+      setArticles((prev) =>
+        prev.filter((a) => a.id !== article.id)
+      );
+    } catch (err) {
+      console.error(err);
       alert("Gagal menghapus artikel");
-      return;
     }
-
-    setArticles((prev) => prev.filter((a) => a.id !== id));
   };
 
   /* =======================
-   * FILTERED DATA
-   * ======================= */
+     FILTER
+  ======================= */
+
   const filteredArticles =
     filter === "all"
       ? articles
@@ -119,30 +146,45 @@ const AdminDashboard = () => {
     (a) => a.status === "draft"
   ).length;
 
+  const categoryCount = new Set(
+    articles.flatMap((a) => a.categories || [])
+  ).size;
+
   /* =======================
-   * RENDER
-   * ======================= */
+     RENDER
+  ======================= */
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
       <div className="container mx-auto px-4 md:px-8 py-12">
+
         {/* HEADER */}
+
         <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+
           <div>
-            <h1 className="text-3xl font-extrabold mb-1">Dashboard</h1>
+            <h1 className="text-3xl font-extrabold mb-1">
+              Dashboard
+            </h1>
             <p className="text-muted-foreground text-sm">
               Manage your articles
             </p>
           </div>
 
           <div className="flex gap-2">
+
             <Button asChild variant="outline">
-              <Link to="/admin/categories">Manage Categories</Link>
+              <Link to="/admin/categories">
+                Manage Categories
+              </Link>
             </Button>
 
             <Button asChild>
-              <Link to="/admin/articles/new">+ New Article</Link>
+              <Link to="/admin/articles/new">
+                + New Article
+              </Link>
             </Button>
 
             <Button
@@ -154,166 +196,257 @@ const AdminDashboard = () => {
             >
               Logout
             </Button>
+
           </div>
+
         </div>
 
         {/* STATS */}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <Stat label="Total Articles" value={articles.length} />
-          <Stat label="Published" value={publishedCount} />
-          <Stat label="Drafts" value={draftCount} />
+
+          <Stat
+            label="Total Articles"
+            value={articles.length}
+          />
+
+          <Stat
+            label="Published"
+            value={publishedCount}
+          />
+
+          <Stat
+            label="Drafts"
+            value={draftCount}
+          />
+
           <Stat
             label="Categories"
-            value={
-              new Set(
-                articles
-                  .map((a) => a.category)
-                  .filter((c): c is string => Boolean(c))
-              ).size
-            }
+            value={categoryCount}
           />
+
         </div>
 
         {/* FILTER */}
+
         <div className="flex gap-2 mb-4">
-          {(["all", "published", "draft"] as const).map((f) => (
-            <Button
-              key={f}
-              size="sm"
-              variant={filter === f ? "default" : "outline"}
-              onClick={() => setFilter(f)}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Button>
-          ))}
+
+          {(["all", "published", "draft"] as const).map(
+            (f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={
+                  filter === f ? "default" : "outline"
+                }
+                onClick={() => setFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() +
+                  f.slice(1)}
+              </Button>
+            )
+          )}
+
         </div>
 
         {/* TABLE */}
+
         <div className="rounded-xl border bg-card shadow-soft">
+
           <Table>
+
             <TableHeader>
+
               <TableRow>
-                <TableHead className="w-[80px]">Image</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">
-                  Category
+
+                <TableHead className="w-[80px]">
+                  Image
                 </TableHead>
+
+                <TableHead>
+                  Title
+                </TableHead>
+
+                <TableHead>
+                  Status
+                </TableHead>
+
+                <TableHead className="hidden md:table-cell">
+                  Categories
+                </TableHead>
+
                 <TableHead className="hidden sm:table-cell">
                   Date
                 </TableHead>
+
                 <TableHead className="text-right">
                   Actions
                 </TableHead>
+
               </TableRow>
+
             </TableHeader>
 
             <TableBody>
+
               {loading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-10"
+                  >
                     Loading articles...
                   </TableCell>
                 </TableRow>
               )}
 
-              {!loading && filteredArticles.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10">
-                    No articles found
-                  </TableCell>
-                </TableRow>
-              )}
+              {!loading &&
+                filteredArticles.map((article) => {
 
-              {filteredArticles.map((article) => {
-                const imageUrl = article.image;
+                  const imageUrl =
+                    article.image ||
+                    "/placeholder.jpg";
 
-                return (
-                  <TableRow key={article.id}>
-                    <TableCell className="relative">
-                      <img
-                        src={imageUrl ?? "/placeholder.jpg"}
-                        className="w-14 h-10 rounded-md object-cover border cursor-pointer"
-                        onMouseEnter={() =>
-                          imageUrl && setHoverImage(imageUrl)
-                        }
-                        onMouseLeave={() => setHoverImage(null)}
-                      />
+                  return (
 
-                      {hoverImage === imageUrl && (
-                        <div className="absolute left-16 top-0 z-50">
-                          <img
-                            src={hoverImage}
-                            className="w-80 max-h-80 object-cover rounded-xl shadow-2xl border bg-white"
-                          />
-                        </div>
-                      )}
-                    </TableCell>
+                    <TableRow key={article.id}>
 
-                    <TableCell className="font-medium max-w-[220px] truncate">
-                      {article.title}
-                    </TableCell>
+                      <TableCell className="relative">
 
-                    <TableCell>
-                      <span
-                        className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          article.status === "published"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {article.status}
-                      </span>
-                    </TableCell>
+                        <img
+                          src={imageUrl}
+                          className="w-14 h-10 rounded-md object-cover border cursor-pointer"
+                          onMouseEnter={() =>
+                            setHoverImage(imageUrl)
+                          }
+                          onMouseLeave={() =>
+                            setHoverImage(null)
+                          }
+                        />
 
-                    <TableCell className="hidden md:table-cell">
-                      {article.category || "-"}
-                    </TableCell>
+                        {hoverImage === imageUrl && (
+                          <div className="absolute left-16 top-0 z-50">
 
-                    <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                      {article.created_at
-                        ? new Date(article.created_at).toLocaleDateString()
-                        : "-"}
-                    </TableCell>
+                            <img
+                              src={hoverImage}
+                              className="w-80 max-h-80 object-cover rounded-xl shadow-2xl border bg-white"
+                            />
 
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Link to={`/articles/${article.slug}`}>
-                          <Button variant="ghost" size="icon">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                          </div>
+                        )}
 
-                        <Link to={`/admin/articles/edit/${article.id}`}>
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
+                      </TableCell>
 
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => deleteArticle(article.id)}
+                      <TableCell className="font-medium max-w-[220px] truncate">
+                        {article.title}
+                      </TableCell>
+
+                      <TableCell>
+
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            article.status ===
+                            "published"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                          {article.status}
+                        </span>
+
+                      </TableCell>
+
+                      <TableCell className="hidden md:table-cell">
+
+                        {article.categories?.length
+                          ? article.categories.join(
+                              ", "
+                            )
+                          : "-"}
+
+                      </TableCell>
+
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+
+                        {article.created_at
+                          ? new Date(
+                              article.created_at
+                            ).toLocaleDateString()
+                          : "-"}
+
+                      </TableCell>
+
+                      <TableCell className="text-right">
+
+                        <div className="flex justify-end gap-1">
+
+                          <Link
+                            to={`/articles/${article.slug}`}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+
+                          <Link
+                            to={`/admin/articles/edit/${article.id}`}
+                          >
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive"
+                            onClick={() =>
+                              deleteArticle(article)
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+
+                        </div>
+
+                      </TableCell>
+
+                    </TableRow>
+
+                  );
+                })}
+
             </TableBody>
+
           </Table>
+
         </div>
+
       </div>
 
       <Footer />
+
     </div>
   );
 };
 
-const Stat = ({ label, value }: { label: string; value: number }) => (
+/* =======================
+   STAT CARD
+======================= */
+
+const Stat = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) => (
   <div className="rounded-xl bg-card shadow-soft p-5">
     <p className="text-sm text-muted-foreground mb-1">
       {label}
