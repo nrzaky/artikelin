@@ -6,9 +6,9 @@ Project ini dirancang sebagai **content management system (CMS) sederhana** untu
 
 ---
 
-# 🚀 Fitur Utama
+# Fitur Utama
 
-### 📝 Manajemen Artikel
+### Manajemen Artikel
 - Membuat artikel baru
 - Mengedit artikel
 - Menghapus artikel
@@ -16,34 +16,34 @@ Project ini dirancang sebagai **content management system (CMS) sederhana** untu
 - Upload gambar artikel
 - SEO meta title & description
 
-### 🏷 Multiple Categories
+### Multiple Categories
 - Satu artikel dapat memiliki **lebih dari satu kategori**
 - Sistem relasi many-to-many
 - Manajemen kategori di dashboard admin
 
-### 🔎 Pencarian Artikel
+### Pencarian Artikel
 - Search artikel berdasarkan judul
 - Pagination halaman artikel
 
-### 📰 Tampilan Blog
+### Tampilan Blog
 - Featured article di homepage
 - Recent articles
 - Related articles
 - Estimated reading time
 - Table of contents (TOC)
 
-### 🖼 Media Storage
+### Media Storage
 - Upload gambar menggunakan **Supabase Storage**
 - Auto delete image saat artikel dihapus
 - Auto replace image saat edit artikel
 
-### 🔐 Admin Dashboard
+### Admin Dashboard
 - Login admin
 - Dashboard statistik artikel
 - CRUD artikel
 - Manajemen kategori
 
-### 🔍 SEO Optimization
+### SEO Optimization
 - Meta title
 - Meta description
 - OpenGraph tags
@@ -51,7 +51,7 @@ Project ini dirancang sebagai **content management system (CMS) sederhana** untu
 
 ---
 
-# 🛠 Teknologi yang Digunakan
+# Teknologi yang Digunakan
 
 ### Frontend
 - **React**
@@ -73,7 +73,7 @@ Supabase digunakan untuk:
 
 ---
 
-# 🗄 Database
+# Database
 
 Database menggunakan **PostgreSQL (Supabase)** dengan struktur utama:
 
@@ -114,4 +114,4 @@ Relasi many-to-many antara artikel dan kategori.
 
 ---
 
-# 🗂 Struktur Project
+
