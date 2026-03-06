@@ -13,9 +13,7 @@ const Index = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* =======================
-     FETCH ARTICLES
-  ======================= */
+  /* ================= FETCH ARTICLES ================= */
 
   useEffect(() => {
 
@@ -69,26 +67,27 @@ const Index = () => {
 
       {/* HERO */}
 
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden border-b">
 
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-secondary" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-secondary opacity-90" />
 
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
 
-        <div className="relative container mx-auto px-4 md:px-8 py-24 md:py-36 text-center text-primary-foreground">
+        <div className="relative max-w-5xl mx-auto px-4 md:px-6 py-28 md:py-36 text-center text-primary-foreground">
 
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight leading-tight">
             Artikelin
           </h1>
 
-          <p className="text-lg md:text-xl text-primary-foreground/80 max-w-xl mx-auto mb-8">
-            Stories, insights, and ideas — crafted for the curious mind.
+          <p className="text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto mb-10">
+            Blog teknologi yang membahas dunia pemrograman, software development,
+            dan tren teknologi terbaru untuk developer modern.
           </p>
 
           <Link to="/articles">
-            <Button size="lg" className="shadow-lg">
-              Browse Articles
+            <Button size="lg" className="shadow-xl">
+              Explore Articles
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
@@ -97,11 +96,93 @@ const Index = () => {
 
       </section>
 
-      {/* FEATURED */}
 
-      <section className="container mx-auto px-4 md:px-8 py-16">
+      {/* ABOUT WEBSITE */}
 
-        <h2 className="text-2xl font-bold mb-8">
+      <section className="py-24">
+
+        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
+
+          {/* TEXT */}
+
+          <div>
+
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              About Artikelin
+            </h2>
+
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              <strong>Artikelin</strong> adalah platform blog teknologi yang
+              membahas pemrograman, software development, dan tren teknologi
+              terbaru. Website ini dibuat untuk berbagi wawasan, tutorial,
+              serta insight dunia coding untuk developer modern.
+            </p>
+
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              Mulai dari bahasa pemrograman seperti PHP, TypeScript,
+              hingga backend modern seperti Golang dan cloud development.
+            </p>
+
+            <p className="text-muted-foreground leading-relaxed">
+              Artikelin dibangun menggunakan teknologi modern seperti
+              React, TypeScript, Supabase, dan dideploy menggunakan
+              Vercel untuk performa cepat dan scalable.
+            </p>
+
+          </div>
+
+          {/* AUTHOR CARD */}
+
+          <div className="border rounded-2xl p-8 bg-card shadow-sm">
+
+            <h3 className="text-xl font-semibold mb-4">
+              About the Creator
+            </h3>
+
+            <p className="text-muted-foreground mb-4">
+              Halo, saya <strong>Naufal Raikhan Zaky</strong>, seorang
+              software developer yang berfokus pada backend development
+              dan modern web technologies.
+            </p>
+
+            <p className="text-muted-foreground mb-6">
+              Website ini saya buat sebagai tempat berbagi pengetahuan
+              sekaligus sebagai project portfolio untuk menunjukkan
+              kemampuan saya dalam membangun aplikasi web modern.
+            </p>
+
+            <div className="flex gap-3">
+
+              <a
+                href="https://github.com/nrzaky"
+                target="_blank"
+                className="px-4 py-2 border rounded-lg text-sm hover:bg-muted transition"
+              >
+                GitHub
+              </a>
+
+              <a
+                href="https://linkedin.com/in/naufalraikhanz"
+                target="_blank"
+                className="px-4 py-2 border rounded-lg text-sm hover:bg-muted transition"
+              >
+                LinkedIn
+              </a>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      {/* FEATURED ARTICLE */}
+
+      <section className="max-w-6xl mx-auto px-4 md:px-6 py-16">
+
+        <h2 className="text-2xl font-bold mb-10">
           Featured Article
         </h2>
 
@@ -115,14 +196,12 @@ const Index = () => {
 
           <Link
             to={`/articles/${featured.slug}`}
-            className="group block rounded-xl overflow-hidden bg-card shadow-card hover:shadow-elevated transition-all duration-300"
+            className="group block rounded-2xl overflow-hidden border hover:shadow-lg transition"
           >
 
             <div className="grid md:grid-cols-2">
 
-              {/* IMAGE */}
-
-              <div className="aspect-[16/10] md:aspect-auto overflow-hidden bg-muted">
+              <div className="aspect-[16/10] overflow-hidden">
 
                 <img
                   src={featured.image ?? "/placeholder.jpg"}
@@ -132,9 +211,7 @@ const Index = () => {
 
               </div>
 
-              {/* CONTENT */}
-
-              <div className="p-6 md:p-10 flex flex-col justify-center">
+              <div className="p-8 flex flex-col justify-center">
 
                 {featured.categories?.length > 0 && (
 
@@ -155,18 +232,18 @@ const Index = () => {
 
                 )}
 
-                <h3 className="text-2xl md:text-3xl font-bold mb-3 group-hover:text-primary transition-colors">
+                <h3 className="text-2xl md:text-3xl font-bold mb-3 group-hover:text-primary transition">
                   {featured.title}
                 </h3>
 
-                <p className="text-muted-foreground leading-relaxed mb-4">
+                <p className="text-muted-foreground mb-4">
                   Klik untuk membaca artikel selengkapnya.
                 </p>
 
                 {featured.created_at && (
-                  <div className="text-sm text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     {new Date(featured.created_at).toLocaleDateString()}
-                  </div>
+                  </span>
                 )}
 
               </div>
@@ -185,11 +262,12 @@ const Index = () => {
 
       </section>
 
-      {/* RECENT */}
 
-      <section className="container mx-auto px-4 md:px-8 pb-16">
+      {/* RECENT ARTICLES */}
 
-        <div className="flex items-center justify-between mb-8">
+      <section className="max-w-6xl mx-auto px-4 md:px-6 pb-24">
+
+        <div className="flex items-center justify-between mb-10">
 
           <h2 className="text-2xl font-bold">
             Recent Articles
@@ -213,7 +291,7 @@ const Index = () => {
 
         ) : (
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
 
             {recent.map((article) => (
               <ArticleCard
@@ -227,6 +305,44 @@ const Index = () => {
         )}
 
       </section>
+
+
+      {/* TECH STACK */}
+
+      <section className="border-t py-24 bg-muted/30">
+
+        <div className="max-w-5xl mx-auto px-4 text-center">
+
+          <h2 className="text-3xl font-bold mb-10">
+            Built With Modern Web Technology
+          </h2>
+
+          <div className="flex flex-wrap justify-center gap-4">
+
+            {[
+              "React",
+              "TypeScript",
+              "Vite",
+              "TailwindCSS",
+              "Supabase",
+              "Vercel"
+            ].map((tech) => (
+
+              <span
+                key={tech}
+                className="px-5 py-2 border rounded-full text-sm bg-background shadow-sm"
+              >
+                {tech}
+              </span>
+
+            ))}
+
+          </div>
+
+        </div>
+
+      </section>
+
 
       <Footer />
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Share2, Copy, Twitter, MessageCircle } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
 import Navbar from "@/components/Navbar";
@@ -36,11 +36,45 @@ const ArticleDetail = () => {
   const [related, setRelated] = useState<Related[]>([]);
   const [loading, setLoading] = useState(true);
 
+  /* ================= SHARE ================= */
+
+  const shareUrl =
+    typeof window !== "undefined" ? window.location.href : "";
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Link copied!");
+    } catch {
+      alert("Failed to copy link");
+    }
+  };
+
+  const shareWhatsapp = () => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareUrl)}`);
+  };
+
+  const shareTwitter = () => {
+    window.open(
+      `https://twitter.com/intent/tweet?url=${encodeURIComponent(
+        shareUrl
+      )}&text=${encodeURIComponent(article?.title || "")}`
+    );
+  };
+
+  const nativeShare = async () => {
+    if (navigator.share) {
+      await navigator.share({
+        title: article?.title,
+        url: shareUrl,
+      });
+    }
+  };
+
   /* ================= FETCH ================= */
 
   useEffect(() => {
     const fetchArticle = async () => {
-
       if (!slug) return;
 
       const { data, error } = await supabase
@@ -69,9 +103,15 @@ const ArticleDetail = () => {
           .filter(Boolean),
       };
 
-      setArticle(formatted);
+      setArticle({
+        ...formatted,
+        views: (formatted.views || 0) + 1,
+      });
 
-      /* RELATED */
+      await supabase
+        .from("articles")
+        .update({ views: (data.views || 0) + 1 })
+        .eq("id", data.id);
 
       const { data: relatedData } = await supabase
         .from("articles")
@@ -82,7 +122,6 @@ const ArticleDetail = () => {
         .limit(3);
 
       setRelated(relatedData || []);
-
       setLoading(false);
     };
 
@@ -94,7 +133,7 @@ const ArticleDetail = () => {
   const readTime = useMemo(() => {
     if (!article?.content) return 0;
     const text = article.content.replace(/<[^>]+>/g, "");
-    const words = text.split(/\s+/).length;
+    const words = text.trim().split(/\s+/).length;
     return Math.ceil(words / 200);
   }, [article]);
 
@@ -154,22 +193,51 @@ const ArticleDetail = () => {
           <meta property="og:image" content={article.image} />
         )}
         <link rel="canonical" href={fullUrl} />
+
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: article.title,
+            description: article.meta_description || plainText,
+            image: article.image ? [article.image] : [],
+            author: {
+              "@type": "Person",
+              name: article.author || "Naufal Raikhan Zaky"
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "Artikelin",
+              logo: {
+                "@type": "ImageObject",
+                url: "https://artikelin.my.id/logo-artikelin.png"
+              }
+            },
+            datePublished: article.created_at,
+            dateModified: article.created_at,
+            mainEntityOfPage: {
+              "@type": "WebPage",
+              "@id": fullUrl
+            }
+          })}
+          </script>
       </Helmet>
 
       <Navbar />
 
       {/* HERO */}
 
-      <div className="relative h-[500px] overflow-hidden">
+      <div className="relative h-[420px] md:h-[500px] overflow-hidden">
 
         <img
           src={article.image || "/placeholder.jpg"}
+          alt={article.title}
           className="w-full h-full object-cover"
         />
 
         <div className="absolute inset-0 bg-black/60" />
 
-        <div className="absolute bottom-0 left-0 right-0 p-10 max-w-5xl mx-auto text-white">
+        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 max-w-5xl mx-auto text-white">
 
           {article.categories?.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-3">
@@ -183,24 +251,70 @@ const ArticleDetail = () => {
               ))}
             </div>
           )}
-          <h1 className="text-4xl md:text-5xl font-extrabold mt-4 mb-4 leading-tight">
+
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mt-4 mb-4 leading-tight">
             {article.title}
           </h1>
-          <div className="flex gap-6 text-sm text-white/80">
+
+          <div className="flex flex-wrap gap-4 text-sm text-white/80 items-center">
+
             {article.author && <span>{article.author}</span>}
+
             {article.created_at && (
               <span>
                 {new Date(article.created_at).toLocaleDateString()}
               </span>
             )}
+
             <span>{readTime} min read</span>
             <span>{article.views || 0} views</span>
+
           </div>
+
+          {/* SHARE BUTTONS */}
+
+          <div className="flex flex-wrap gap-2 mt-4">
+
+            <button
+              onClick={nativeShare}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black text-white text-sm"
+            >
+              <Share2 size={16} />
+              Share
+            </button>
+
+            <button
+              onClick={copyLink}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm"
+            >
+              <Copy size={16} />
+              Copy
+            </button>
+
+            <button
+              onClick={shareWhatsapp}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-sm"
+            >
+              <MessageCircle size={16} />
+              WhatsApp
+            </button>
+
+            <button
+              onClick={shareTwitter}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-sm"
+            >
+              <Twitter size={16} />
+              Twitter
+            </button>
+
+          </div>
+
         </div>
       </div>
+
       {/* BODY */}
 
-      <div className="mx-auto px-4 md:px-6 py-20 max-w-7xl">
+      <div className="mx-auto px-4 md:px-6 py-16 max-w-7xl">
 
         <div className="flex flex-col lg:flex-row gap-16 justify-center">
 
@@ -215,54 +329,77 @@ const ArticleDetail = () => {
             </Link>
 
             <div
-              className="prose prose-lg dark:prose-invert max-w-none"
+              className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{
                 __html: article.content || "",
               }}
             />
           </article>
+
           {toc.length > 0 && (
             <aside className="hidden lg:block w-64 sticky top-32 h-fit">
+
               <div className="border rounded-xl p-6 bg-card">
+
                 <h3 className="font-semibold mb-4">
                   On this page
                 </h3>
+
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   {toc.map((item) => (
                     <li key={item.id}>{item.text}</li>
                   ))}
                 </ul>
+
               </div>
+
             </aside>
           )}
+
         </div>
+
       </div>
 
       {/* RELATED */}
 
       {related.length > 0 && (
         <div className="border-t py-20">
+
           <div className="container max-w-6xl mx-auto px-4">
+
             <h2 className="text-2xl font-bold mb-10">
               Related Articles
             </h2>
+
             <div className="grid md:grid-cols-3 gap-8">
+
               {related.map((r) => (
                 <Link key={r.id} to={`/articles/${r.slug}`}>
+
                   <div className="overflow-hidden rounded-xl mb-4">
+
                     <img
                       src={r.image || "/placeholder.jpg"}
+                      alt={r.title}
                       className="w-full h-48 object-cover"
                     />
+
                   </div>
+
                   <h3 className="font-semibold">{r.title}</h3>
+
                 </Link>
               ))}
+
             </div>
+
           </div>
+
         </div>
       )}
+
       <Footer />
+
     </div>
   );
 };
