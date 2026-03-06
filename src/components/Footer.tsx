@@ -91,6 +91,15 @@ const Footer = () => {
                 LinkedIn
               </a>
 
+              <a
+                href="https:/naufalraikhanzaky.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition"
+              >
+                About Me
+              </a>
+
             </div>
 
           </div>
