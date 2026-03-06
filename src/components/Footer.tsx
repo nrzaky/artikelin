@@ -83,7 +83,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://linkedin.com"
+                href="https://linkedin.com/in/naufalraikhanz"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-foreground transition"
