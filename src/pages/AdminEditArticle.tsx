@@ -10,6 +10,10 @@ type Category = {
   name: string;
 };
 
+type StorageImage = {
+  name: string;
+};
+
 const AdminEditArticle = () => {
 
   const { id } = useParams();
@@ -28,6 +32,9 @@ const AdminEditArticle = () => {
 
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+
+  const [library, setLibrary] = useState<StorageImage[]>([]);
+  const [showLibrary, setShowLibrary] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -63,6 +70,7 @@ const AdminEditArticle = () => {
         setTitle(article.title);
         setContent(article.content);
         setStatus(article.status);
+
         setPreview(article.image);
 
         setMetaTitle(article.meta_title || "");
@@ -75,6 +83,12 @@ const AdminEditArticle = () => {
         setSelectedCategories(catIds);
 
       }
+
+      const { data: images } = await supabase.storage
+        .from("articles")
+        .list();
+
+      setLibrary(images || []);
 
       setLoading(false);
 
@@ -102,7 +116,7 @@ const AdminEditArticle = () => {
       let imageUrl = preview;
 
       /* =======================
-         UPLOAD IMAGE
+         UPLOAD NEW IMAGE
       ======================= */
 
       if (image) {
@@ -111,18 +125,17 @@ const AdminEditArticle = () => {
 
           try {
 
-            const oldPath =
-              preview.split("/storage/v1/object/public/articles/")[1];
+            const fileName = preview.split("/").pop();
 
-            if (oldPath) {
+            if (fileName) {
 
               await supabase.storage
                 .from("articles")
-                .remove([oldPath]);
+                .remove([fileName]);
 
             }
 
-          } catch (err) {
+          } catch {
             console.warn("Gagal hapus gambar lama");
           }
 
@@ -133,7 +146,7 @@ const AdminEditArticle = () => {
           .replace(/\s+/g, "-")
           .replace(/[^a-z0-9.-]/g, "");
 
-        const fileName = `articles/${Date.now()}-${cleanName}`;
+        const fileName = `${Date.now()}-${cleanName}`;
 
         const { error } = await supabase.storage
           .from("articles")
@@ -178,7 +191,7 @@ const AdminEditArticle = () => {
       if (error) throw error;
 
       /* =======================
-         UPDATE CATEGORY RELATION
+         UPDATE CATEGORIES
       ======================= */
 
       await supabase
@@ -207,6 +220,22 @@ const AdminEditArticle = () => {
       setSaving(false);
 
     }
+
+  };
+
+  /* =======================
+     SELECT IMAGE FROM LIBRARY
+  ======================= */
+
+  const selectImageFromLibrary = (fileName: string) => {
+
+    const url = supabase.storage
+      .from("articles")
+      .getPublicUrl(fileName).data.publicUrl;
+
+    setPreview(url);
+    setImage(null);
+    setShowLibrary(false);
 
   };
 
@@ -253,7 +282,7 @@ const AdminEditArticle = () => {
         onChange={(e) => setMetaDescription(e.target.value)}
       />
 
-      {/* MULTI CATEGORY */}
+      {/* CATEGORIES */}
 
       <div className="mb-6">
 
@@ -263,7 +292,7 @@ const AdminEditArticle = () => {
 
         <div className="flex flex-wrap gap-2">
 
-          {categories.map((cat) => {
+          {categories.map(cat => {
 
             const active = selectedCategories.includes(cat.id);
 
@@ -274,30 +303,19 @@ const AdminEditArticle = () => {
                 type="button"
                 onClick={() => {
 
-                  setSelectedCategories((prev) =>
+                  setSelectedCategories(prev =>
                     prev.includes(cat.id)
-                      ? prev.filter((id) => id !== cat.id)
+                      ? prev.filter(id => id !== cat.id)
                       : [...prev, cat.id]
                   );
 
                 }}
-                className={`
-                  px-3
-                  py-1.5
-                  rounded-full
-                  text-sm
-                  border
-                  transition
-                  ${
-                    active
-                      ? "bg-primary text-white border-primary"
-                      : "bg-muted hover:bg-muted/70"
-                  }
-                `}
+                className={`px-3 py-1.5 rounded-full text-sm border transition
+                ${active
+                  ? "bg-primary text-white border-primary"
+                  : "bg-muted hover:bg-muted/70"}`}
               >
-
                 {cat.name}
-
               </button>
 
             );
@@ -329,7 +347,7 @@ const AdminEditArticle = () => {
         className="mb-6"
       />
 
-      {/* IMAGE */}
+      {/* IMAGE UPLOAD */}
 
       <input
         type="file"
@@ -351,6 +369,50 @@ const AdminEditArticle = () => {
           src={preview}
           className="mt-4 max-h-60 rounded-md"
         />
+      )}
+
+      {/* IMAGE LIBRARY BUTTON */}
+
+      <div className="mt-4">
+
+        <Button
+          variant="outline"
+          onClick={() => setShowLibrary(!showLibrary)}
+        >
+          Choose From Library
+        </Button>
+
+      </div>
+
+      {/* IMAGE LIBRARY */}
+
+      {showLibrary && (
+
+        <div className="grid grid-cols-3 gap-3 mt-4">
+
+          {library.map(img => {
+
+            const url = supabase.storage
+              .from("articles")
+              .getPublicUrl(img.name).data.publicUrl;
+
+            return (
+
+              <img
+                key={img.name}
+                src={url}
+                className="cursor-pointer rounded-md border hover:opacity-80"
+                onClick={() =>
+                  selectImageFromLibrary(img.name)
+                }
+              />
+
+            );
+
+          })}
+
+        </div>
+
       )}
 
       {/* ACTION */}

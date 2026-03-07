@@ -52,7 +52,7 @@ const Footer = () => {
 
               <li>
                 <a
-                  href="/about"
+                  href="#"
                   className="hover:text-foreground transition"
                 >
                   About

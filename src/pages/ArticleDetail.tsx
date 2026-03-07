@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Share2, Copy, Twitter, MessageCircle } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import DOMPurify from "dompurify";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
+import CommentSection from "@/components/CommentSection";
 
 type Article = {
   id: number;
@@ -30,6 +32,7 @@ type Related = {
 };
 
 const ArticleDetail = () => {
+
   const { slug } = useParams<{ slug: string }>();
 
   const [article, setArticle] = useState<Article | null>(null);
@@ -74,7 +77,9 @@ const ArticleDetail = () => {
   /* ================= FETCH ================= */
 
   useEffect(() => {
+
     const fetchArticle = async () => {
+
       if (!slug) return;
 
       const { data, error } = await supabase
@@ -103,15 +108,34 @@ const ArticleDetail = () => {
           .filter(Boolean),
       };
 
-      setArticle({
-        ...formatted,
-        views: (formatted.views || 0) + 1,
-      });
+      setArticle(formatted);
 
-      await supabase
-        .from("articles")
-        .update({ views: (data.views || 0) + 1 })
-        .eq("id", data.id);
+      /* ================= VIEW TRACKING ================= */
+
+      const viewedKey = `viewed_${data.id}`;
+
+      if (!sessionStorage.getItem(viewedKey)) {
+
+        sessionStorage.setItem(viewedKey, "true");
+
+        await supabase
+          .from("articles")
+          .update({ views: (data.views || 0) + 1 })
+          .eq("id", data.id);
+
+        await supabase
+          .from("article_views")
+          .insert({
+            article_id: data.id
+          });
+
+        setArticle(prev =>
+          prev ? { ...prev, views: (prev.views || 0) + 1 } : prev
+        );
+
+      }
+
+      /* ================= RELATED ================= */
 
       const { data: relatedData } = await supabase
         .from("articles")
@@ -122,30 +146,43 @@ const ArticleDetail = () => {
         .limit(3);
 
       setRelated(relatedData || []);
+
       setLoading(false);
+
     };
 
     fetchArticle();
+
   }, [slug]);
 
   /* ================= READ TIME ================= */
 
   const readTime = useMemo(() => {
+
     if (!article?.content) return 0;
+
     const text = article.content.replace(/<[^>]+>/g, "");
+
     const words = text.trim().split(/\s+/).length;
+
     return Math.ceil(words / 200);
+
   }, [article]);
 
   /* ================= TOC ================= */
 
   const toc = useMemo(() => {
+
     if (!article?.content) return [];
-    const matches = article.content.match(/<h2[^>]*>(.*?)<\/h2>/g) || [];
+
+    const matches =
+      article.content.match(/<h2[^>]*>(.*?)<\/h2>/g) || [];
+
     return matches.map((h, i) => ({
       id: `section-${i}`,
       text: h.replace(/<[^>]+>/g, ""),
     }));
+
   }, [article]);
 
   if (loading)
@@ -164,7 +201,9 @@ const ArticleDetail = () => {
       <div className="min-h-screen">
         <Navbar />
         <div className="py-32 text-center">
-          <h1 className="text-2xl font-bold mb-4">Article not found</h1>
+          <h1 className="text-2xl font-bold mb-4">
+            Article not found
+          </h1>
           <Link to="/articles">← Back to articles</Link>
         </div>
         <Footer />
@@ -175,23 +214,32 @@ const ArticleDetail = () => {
     ? article.content.replace(/<[^>]+>/g, "").slice(0, 160)
     : "";
 
-  const fullUrl = `${window.location.origin}/articles/${article.slug}`;
+  const fullUrl =
+    `${window.location.origin}/articles/${article.slug}`;
 
   return (
+
     <div className="min-h-screen bg-background">
 
       <Helmet>
+
         <title>{article.meta_title || article.title}</title>
-        <meta
-          name="description"
-          content={article.meta_description || plainText}
-        />
+        <meta name="description" content={article.meta_description || plainText} />
+        <meta property="og:type" content="article" />
         <meta property="og:title" content={article.title} />
         <meta property="og:description" content={plainText} />
         <meta property="og:url" content={fullUrl} />
+        <meta property="og:site_name" content="Artikelin" />
+
         {article.image && (
-          <meta property="og:image" content={article.image} />
+        <meta property="og:image" content={article.image} />
         )}
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={article.title} />
+        <meta name="twitter:description" content={plainText} />
+        <meta name="twitter:image" content={article.image || ""} />
+
         <link rel="canonical" href={fullUrl} />
 
         <script type="application/ld+json">
@@ -220,7 +268,8 @@ const ArticleDetail = () => {
               "@id": fullUrl
             }
           })}
-          </script>
+        </script>
+
       </Helmet>
 
       <Navbar />
@@ -232,6 +281,7 @@ const ArticleDetail = () => {
         <img
           src={article.image || "/placeholder.jpg"}
           alt={article.title}
+          loading="lazy"
           className="w-full h-full object-cover"
         />
 
@@ -267,11 +317,12 @@ const ArticleDetail = () => {
             )}
 
             <span>{readTime} min read</span>
+
             <span>{article.views || 0} views</span>
 
           </div>
 
-          {/* SHARE BUTTONS */}
+          {/* SHARE */}
 
           <div className="flex flex-wrap gap-2 mt-4">
 
@@ -279,37 +330,34 @@ const ArticleDetail = () => {
               onClick={nativeShare}
               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black text-white text-sm"
             >
-              <Share2 size={16} />
-              Share
+              <Share2 size={16} /> Share
             </button>
 
             <button
               onClick={copyLink}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/20 text-sm"
             >
-              <Copy size={16} />
-              Copy
+              <Copy size={16} /> Copy
             </button>
 
             <button
               onClick={shareWhatsapp}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-sm"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500 text-sm"
             >
-              <MessageCircle size={16} />
-              WhatsApp
+              <MessageCircle size={16} /> WhatsApp
             </button>
 
             <button
               onClick={shareTwitter}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-sm"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500 text-sm"
             >
-              <Twitter size={16} />
-              Twitter
+              <Twitter size={16} /> Twitter
             </button>
 
           </div>
 
         </div>
+
       </div>
 
       {/* BODY */}
@@ -331,77 +379,23 @@ const ArticleDetail = () => {
             <div
               className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{
-                __html: article.content || "",
+                __html: DOMPurify.sanitize(article.content || "")
               }}
             />
+
           </article>
-
-          {toc.length > 0 && (
-            <aside className="hidden lg:block w-64 sticky top-32 h-fit">
-
-              <div className="border rounded-xl p-6 bg-card">
-
-                <h3 className="font-semibold mb-4">
-                  On this page
-                </h3>
-
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  {toc.map((item) => (
-                    <li key={item.id}>{item.text}</li>
-                  ))}
-                </ul>
-
-              </div>
-
-            </aside>
-          )}
 
         </div>
 
       </div>
-
-      {/* RELATED */}
-
-      {related.length > 0 && (
-        <div className="border-t py-20">
-
-          <div className="container max-w-6xl mx-auto px-4">
-
-            <h2 className="text-2xl font-bold mb-10">
-              Related Articles
-            </h2>
-
-            <div className="grid md:grid-cols-3 gap-8">
-
-              {related.map((r) => (
-                <Link key={r.id} to={`/articles/${r.slug}`}>
-
-                  <div className="overflow-hidden rounded-xl mb-4">
-
-                    <img
-                      src={r.image || "/placeholder.jpg"}
-                      alt={r.title}
-                      className="w-full h-48 object-cover"
-                    />
-
-                  </div>
-
-                  <h3 className="font-semibold">{r.title}</h3>
-
-                </Link>
-              ))}
-
-            </div>
-
-          </div>
-
-        </div>
-      )}
+      <CommentSection articleId={article.id} />
 
       <Footer />
 
     </div>
+
   );
+
 };
 
 export default ArticleDetail;
