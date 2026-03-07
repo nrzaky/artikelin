@@ -92,7 +92,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https:/naufalraikhanzaky.vercel.app"
+                href="https://naufalraikhanzaky.vercel.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-foreground transition"
