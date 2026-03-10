@@ -362,15 +362,10 @@ const AdminCreateArticle = () => {
                   selectImageFromLibrary(img.name)
                 }
               />
-
             );
-
           })}
-
         </div>
-
       )}
-
       {/* BUTTONS */}
 
       <div className="flex gap-2 mt-6">
@@ -388,13 +383,9 @@ const AdminCreateArticle = () => {
         >
           Cancel
         </Button>
-
       </div>
-
     </div>
-
   );
-
 };
 
 export default AdminCreateArticle;

@@ -169,6 +169,14 @@ const Index = () => {
                 LinkedIn
               </a>
 
+              <a
+                href="https://naufalraikhanzaky.vercel.app"
+                target="_blank"
+                className="px-4 py-2 border rounded-lg text-sm hover:bg-muted transition"
+              >
+                My Portfolio
+              </a>
+
             </div>
 
           </div>
