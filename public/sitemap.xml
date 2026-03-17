@@ -9,7 +9,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 </url>
 
 <url>
-<loc>https://artikelin.my.id/articles</loc>
+<loc>https://artikelin.my.id/articles/</loc>
 <changefreq>daily</changefreq>
 <priority>0.9</priority>
 </url>
