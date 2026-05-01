@@ -10,66 +10,117 @@ const ITEMS_PER_PAGE = 6;
 const ArticlesPage = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   /* =======================
+     DEBOUNCE SEARCH
+  ======================= */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  /* =======================
      FETCH ARTICLES
   ======================= */
-
   useEffect(() => {
     const fetchArticles = async () => {
-
       setLoading(true);
 
-      const { data, error } = await supabase
-        .from("articles")
-        .select(`
-          *,
-          article_categories (
-            categories (
-              id,
-              name
-            )
-          )
-        `)
-        .eq("status", "published")
-        .order("created_at", { ascending: false });
+      let data: any[] = [];
+      let error: any = null;
 
-      if (error) {
-        console.error(error);
-        setArticles([]);
-        setLoading(false);
-        return;
+      /* =======================
+         FULL TEXT SEARCH (RPC)
+      ======================= */
+      if (debouncedSearch) {
+        const res = await supabase.rpc("search_articles", {
+          search_query: debouncedSearch,
+        });
+
+        data = res.data || [];
+        error = res.error;
+
+        if (error) {
+          console.error(error);
+          setArticles([]);
+          setLoading(false);
+          return;
+        }
+
+        /* ⚠️ karena RPC belum join kategori */
+        const ids = data.map((a) => a.id);
+
+        if (ids.length > 0) {
+          const { data: withCategory } = await supabase
+            .from("articles")
+            .select(`
+              *,
+              article_categories (
+                categories (
+                  id,
+                  name
+                )
+              )
+            `)
+            .in("id", ids);
+
+          data = withCategory || [];
+        }
       }
 
-      let formatted =
+      /* =======================
+         NORMAL FETCH
+      ======================= */
+      else {
+        const res = await supabase
+          .from("articles")
+          .select(`
+            *,
+            article_categories (
+              categories (
+                id,
+                name
+              )
+            )
+          `)
+          .eq("status", "published")
+          .order("created_at", { ascending: false });
+
+        data = res.data || [];
+        error = res.error;
+
+        if (error) {
+          console.error(error);
+          setArticles([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      /* =======================
+         FORMAT DATA
+      ======================= */
+      const formatted =
         data?.map((a: any) => ({
           ...a,
           categories: a.article_categories
             ?.map((c: any) => c.categories?.name)
-            .filter(Boolean)
+            .filter(Boolean),
         })) || [];
-
-      /* SEARCH FILTER */
-
-      if (search) {
-
-        formatted = formatted.filter((a: any) =>
-          a.title.toLowerCase().includes(search.toLowerCase())
-        );
-
-      }
 
       setArticles(formatted);
       setPage(1);
       setLoading(false);
-
     };
 
     fetchArticles();
-
-  }, [search]);
+  }, [debouncedSearch]);
 
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
 
@@ -79,17 +130,12 @@ const ArticlesPage = () => {
   );
 
   return (
-
     <div className="min-h-screen bg-background">
-
       <Navbar />
 
       <div className="container mx-auto px-4 md:px-8 py-12">
-
         {/* HEADER */}
-
         <div className="mb-8">
-
           <h1 className="text-3xl font-extrabold mb-2">
             All Articles
           </h1>
@@ -97,11 +143,9 @@ const ArticlesPage = () => {
           <p className="text-muted-foreground">
             Explore our latest stories, insights, and ideas.
           </p>
-
         </div>
 
         {/* SEARCH */}
-
         <input
           type="text"
           placeholder="Search articles..."
@@ -111,27 +155,18 @@ const ArticlesPage = () => {
         />
 
         {/* CONTENT */}
-
         {loading ? (
-
           <p className="text-muted-foreground">
             Loading articles...
           </p>
-
         ) : paginated.length === 0 ? (
-
           <p className="text-muted-foreground">
             No articles found.
           </p>
-
         ) : (
-
           <>
-
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
               {paginated.map((article) => (
-
                 <ArticleCard
                   key={article.id}
                   article={{
@@ -139,17 +174,12 @@ const ArticlesPage = () => {
                     image: article.image ?? "/placeholder.jpg",
                   }}
                 />
-
               ))}
-
             </div>
 
             {/* PAGINATION */}
-
             {totalPages > 1 && (
-
               <div className="flex justify-center gap-2 mt-12">
-
                 <Button
                   variant="outline"
                   size="sm"
@@ -160,7 +190,6 @@ const ArticlesPage = () => {
                 </Button>
 
                 {Array.from({ length: totalPages }, (_, i) => (
-
                   <Button
                     key={i}
                     size="sm"
@@ -169,7 +198,6 @@ const ArticlesPage = () => {
                   >
                     {i + 1}
                   </Button>
-
                 ))}
 
                 <Button
@@ -180,23 +208,15 @@ const ArticlesPage = () => {
                 >
                   Next
                 </Button>
-
               </div>
-
             )}
-
           </>
-
         )}
-
       </div>
 
       <Footer />
-
     </div>
-
   );
-
 };
 
 export default ArticlesPage;

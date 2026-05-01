@@ -14,11 +14,10 @@ if (!container) {
 
 const theme = localStorage.getItem("theme");
 
-if (
-  theme === "dark" ||
-  (!theme && window.matchMedia("(prefers-color-scheme: dark)").matches)
-) {
+if (theme === "dark") {
   document.documentElement.classList.add("dark");
+} else {
+  document.documentElement.classList.remove("dark");
 }
 
 ReactDOM.createRoot(container).render(
