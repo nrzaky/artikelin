@@ -12,7 +12,7 @@ import AdminLogin from "@/pages/AdminLogin";
 import AdminCreateArticle from "./pages/AdminCreateArticle";
 import AdminCategories from "./pages/AdminCategories";
 import AdminEditArticle from "./pages/AdminEditArticle";
-
+import About from "@/pages/About";
 
 
 const queryClient = new QueryClient();
@@ -33,6 +33,7 @@ const App = () => (
          <Route path="/admin/articles/new" element={<AdminCreateArticle />} />
          <Route path="/admin/categories" element={<AdminCategories />} />
          <Route path="/admin/articles/edit/:id" element={<AdminEditArticle />} />
+         <Route path="/about" element ={<About />} />
        </Routes>
     </TooltipProvider>
   </QueryClientProvider>
