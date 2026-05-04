@@ -81,8 +81,8 @@ const Index = () => {
           </h1>
 
           <p className="text-lg md:text-xl text-primary-foreground/80 max-w-2xl mx-auto mb-10">
-            Blog teknologi yang membahas dunia pemrograman, software development,
-            dan tren teknologi terbaru untuk developer modern.
+            A technology blog covering programming, software development,
+            and the latest technology trends for modern developers.
           </p>
 
           <Link to="/articles">
@@ -97,96 +97,7 @@ const Index = () => {
       </section>
 
 
-      {/* ABOUT WEBSITE */}
-
-      <section className="py-24">
-
-        <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-16 items-center">
-
-          {/* TEXT */}
-
-          <div>
-
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              About Artikelin
-            </h2>
-
-            <p className="text-muted-foreground leading-relaxed mb-4">
-              <strong>Artikelin</strong> adalah platform blog teknologi yang
-              membahas pemrograman, software development, dan tren teknologi
-              terbaru. Website ini dibuat untuk berbagi wawasan, tutorial,
-              serta insight dunia coding untuk developer modern.
-            </p>
-
-            <p className="text-muted-foreground leading-relaxed mb-4">
-              Mulai dari bahasa pemrograman seperti PHP, TypeScript,
-              hingga backend modern seperti Golang dan cloud development.
-            </p>
-
-            <p className="text-muted-foreground leading-relaxed">
-              Artikelin dibangun menggunakan teknologi modern seperti
-              React, TypeScript, Supabase, dan dideploy menggunakan
-              Vercel untuk performa cepat dan scalable.
-            </p>
-
-          </div>
-
-          {/* AUTHOR CARD */}
-
-          <div className="border rounded-2xl p-8 bg-card shadow-sm">
-
-            <h3 className="text-xl font-semibold mb-4">
-              About the Creator
-            </h3>
-
-            <p className="text-muted-foreground mb-4">
-              Halo, saya <strong>Naufal Raikhan Zaky</strong>, seorang
-              software developer yang berfokus pada backend development
-              dan modern web technologies.
-            </p>
-
-            <p className="text-muted-foreground mb-6">
-              Website ini saya buat sebagai tempat berbagi pengetahuan
-              sekaligus sebagai project portfolio untuk menunjukkan
-              kemampuan saya dalam membangun aplikasi web modern.
-            </p>
-
-            <div className="flex gap-3">
-
-              <a
-                href="https://github.com/nrzaky"
-                target="_blank"
-                className="px-4 py-2 border rounded-lg text-sm hover:bg-muted transition"
-              >
-                GitHub
-              </a>
-
-              <a
-                href="https://linkedin.com/in/naufalraikhanz"
-                target="_blank"
-                className="px-4 py-2 border rounded-lg text-sm hover:bg-muted transition"
-              >
-                LinkedIn
-              </a>
-
-              <a
-                href="https://naufalraikhanzaky.vercel.app"
-                target="_blank"
-                className="px-4 py-2 border rounded-lg text-sm hover:bg-muted transition"
-              >
-                My Portfolio
-              </a>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      {/* FEATURED ARTICLE */}
+      {/*   FEATURED ARTICLE */}
 
       <section className="max-w-6xl mx-auto px-4 md:px-6 py-16">
 

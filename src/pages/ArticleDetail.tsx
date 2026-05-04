@@ -217,6 +217,18 @@ const ArticleDetail = () => {
   const fullUrl =
     `${window.location.origin}/articles/${article.slug}`;
 
+  const sanitizedContent = article.content
+    ? DOMPurify.sanitize(article.content)
+    : "";
+
+  const contentIsHtml = /<\/?[a-z][\s\S]*>/i.test(sanitizedContent);
+
+  const contentParagraphs = !contentIsHtml
+    ? sanitizedContent
+        .split(/\n\s*\n/)
+        .filter(Boolean)
+    : [];
+
   return (
 
     <div className="min-h-screen bg-background">
@@ -370,18 +382,46 @@ const ArticleDetail = () => {
 
             <Link
               to="/articles"
-              className="inline-flex items-center gap-2 text-sm mb-12 text-muted-foreground"
+              className="inline-flex items-center gap-2 text-sm mb-10 text-muted-foreground hover:text-primary transition"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to articles
             </Link>
 
-            <div
-              className="prose prose-sm md:prose-base lg:prose-lg dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(article.content || "")
-              }}
-            />
+            <header className="rounded-3xl border border-border bg-card p-8 shadow-sm">
+              <div className="space-y-4">
+                <div className="text-sm uppercase tracking-[0.24em] text-muted-foreground">
+                  {article.categories?.join(" • ")}
+                </div>
+                <h1 className="text-3xl md:text-4xl font-extrabold leading-tight text-foreground">
+                  {article.title}
+                </h1>
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  {article.author && <span>{article.author}</span>}
+                  {article.created_at && (
+                    <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                  )}
+                  <span>{readTime} min read</span>
+                  <span>{article.views || 0} views</span>
+                </div>
+              </div>
+            </header>
+
+            <section className="mt-10 rounded-3xl border border-border bg-card p-8 shadow-sm">
+              <div
+                className="prose prose-sm md:prose-base lg:prose-lg prose-headings:font-semibold prose-headings:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:rounded-3xl prose-img:shadow-xl prose-img:border prose-img:border-border prose-blockquote:border-l-4 prose-blockquote:border-muted prose-blockquote:bg-muted/10 prose-blockquote:text-muted-foreground prose-code:rounded prose-code:border prose-code:border-border prose-code:bg-muted prose-pre:bg-slate-950 prose-pre:text-slate-100 dark:prose-invert dark:prose-pre:bg-slate-900 dark:prose-code:bg-slate-950 max-w-none"
+              >
+                {contentIsHtml ? (
+                  <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
+                ) : (
+                  <>
+                    {contentParagraphs.map((paragraph, index) => (
+                      <p key={index}>{paragraph}</p>
+                    ))}
+                  </>
+                )}
+              </div>
+            </section>
 
           </article>
 

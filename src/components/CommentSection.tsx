@@ -178,16 +178,16 @@ const CommentSection = ({ articleId }: Props) => {
       </h2>
 
       {/* FORM */}
-      <div className="mb-10 space-y-3">
+      <div className="mb-10 space-y-3 rounded-3xl border border-border bg-card p-6 shadow-sm">
         <input
-          className="w-full p-3 border rounded-md"
+          className="w-full p-3 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           placeholder="Your name"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
 
         <textarea
-          className="w-full p-3 border rounded-md"
+          className="w-full min-h-[140px] p-3 border border-input rounded-md bg-background text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           placeholder="Write a comment..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -201,7 +201,7 @@ const CommentSection = ({ articleId }: Props) => {
         <button
           onClick={submit}
           disabled={loading}
-          className="px-4 py-2 bg-black text-white rounded-md"
+          className="inline-flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
         >
           {loading ? "Posting..." : "Post Comment"}
         </button>

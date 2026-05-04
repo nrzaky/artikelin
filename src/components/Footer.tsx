@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 const Footer = () => {
   return (
     <footer className="border-t mt-20 bg-muted/30">
@@ -15,9 +17,9 @@ const Footer = () => {
             </h3>
 
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Artikelin adalah blog teknologi yang membahas dunia
-              pemrograman, software development, dan tren teknologi
-              terbaru untuk developer modern.
+              Artikelin is a technology blog covering programming,
+              software development, and the latest technology trends
+              for modern developers.
             </p>
 
           </div>
@@ -33,30 +35,30 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-muted-foreground">
 
               <li>
-                <a
-                  href="/"
+                <Link
+                  to="/"
                   className="hover:text-foreground transition"
                 >
                   Home
-                </a>
+                </Link>
               </li>
 
               <li>
-                <a
-                  href="/articles"
+                <Link
+                  to="/articles"
                   className="hover:text-foreground transition"
                 >
                   Articles
-                </a>
+                </Link>
               </li>
 
               <li>
-                <a
-                  href="#"
+                <Link
+                  to="/about"
                   className="hover:text-foreground transition"
                 >
                   About
-                </a>
+                </Link>
               </li>
 
             </ul>
