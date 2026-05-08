@@ -44,18 +44,13 @@ const AdminCreateArticle = () => {
   useEffect(() => {
 
     const loadCategories = async () => {
-
       const { data } = await supabase
         .from("categories")
         .select("*")
         .order("id");
-
       setCategories(data || []);
-
     };
-
     loadCategories();
-
   }, []);
 
   /* =========================
@@ -65,17 +60,12 @@ const AdminCreateArticle = () => {
   useEffect(() => {
 
     const loadImages = async () => {
-
       const { data } = await supabase.storage
         .from("articles")
         .list();
-
       setLibrary(data || []);
-
     };
-
     loadImages();
-
   }, []);
 
   /* =========================

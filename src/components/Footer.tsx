@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer className="border-t mt-20 bg-muted/30">
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-16">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-5">
 
         <div className="grid md:grid-cols-3 gap-10">
 
