@@ -228,7 +228,7 @@ const Index = () => {
 
       {/* TECH STACK */}
 
-      <section className="border-t py-24 bg-muted/30">
+      <section className="border-t py-10 bg-muted/30">
 
         <div className="max-w-5xl mx-auto px-4 text-center">
 
