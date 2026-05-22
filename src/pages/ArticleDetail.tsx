@@ -158,15 +158,10 @@ const ArticleDetail = () => {
   /* ================= READ TIME ================= */
 
   const readTime = useMemo(() => {
-
     if (!article?.content) return 0;
-
     const text = article.content.replace(/<[^>]+>/g, "");
-
     const words = text.trim().split(/\s+/).length;
-
     return Math.ceil(words / 200);
-
   }, [article]);
 
   /* ================= TOC ================= */
