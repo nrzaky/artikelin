@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
+import { authService } from "@/services/auth.service";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -11,29 +13,22 @@ const AdminLogin = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      alert("Email dan password wajib diisi");
+      toast.error("Email dan password wajib diisi");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        alert("Email atau password salah");
-        return;
-      }
-
-      if (data.session) {
+      const session = await authService.login(email, password);
+      
+      if (session) {
+        toast.success("Login berhasil");
         navigate("/admin");
       }
     } catch (err) {
       console.error(err);
-      alert("Gagal login");
+      toast.error("Gagal login: Email atau password salah");
     } finally {
       setLoading(false);
     }
@@ -41,6 +36,10 @@ const AdminLogin = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
+      <Helmet>
+        <title>Admin Login - Artikelin</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-soft">
         <h1 className="text-2xl font-bold mb-2 text-center">Admin Login</h1>
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 type Comment = {
   id: number;
@@ -54,12 +55,12 @@ const CommentSection = ({ articleId }: Props) => {
 
   const submit = async () => {
     if (!name || !message) {
-      alert("Name and comment required");
+      toast.error("Name and comment required");
       return;
     }
     const lastComment = localStorage.getItem("last_comment");
     if (lastComment && Date.now() - Number(lastComment) < 15000) {
-      alert("Please wait before commenting again");
+      toast.error("Please wait before commenting again");
       return;
     }
     setLoading(true);
@@ -102,7 +103,7 @@ const CommentSection = ({ articleId }: Props) => {
 
     const key = `liked_${id}`;
     if (localStorage.getItem(key)) {
-      alert("You already liked this comment");
+      toast.error("You already liked this comment");
       return;
     }
 

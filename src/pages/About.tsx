@@ -1,6 +1,4 @@
-﻿import { Button } from '@/components/ui/button';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Github, Linkedin } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -9,7 +7,6 @@ import profilePlaceholder from '@/assets/images/profile-placeholder.jpg';
 const About = () => {
   return (
     <>
-      <Navbar />
       {/* SEO */}
       <Helmet>
         <title>About - Naufal Raikhan Zaky</title>
@@ -216,7 +213,7 @@ const About = () => {
         </div>
       </section>
 
-      <Footer />
+
     </>
   );
 };

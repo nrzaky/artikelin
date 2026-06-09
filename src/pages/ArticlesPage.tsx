@@ -1,126 +1,29 @@
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import ArticleCard, { Article } from "@/components/ArticleCard";
+import { Helmet } from "react-helmet-async";
+import ArticleCard from "@/components/ArticleCard";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { useArticles, useSearchArticles } from "@/hooks/useArticles";
 
 const ITEMS_PER_PAGE = 6;
 
 const ArticlesPage = () => {
-  const [articles, setArticles] = useState<Article[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
 
-  /* =======================
-     DEBOUNCE SEARCH
-  ======================= */
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
+      setPage(1);
     }, 400);
-
     return () => clearTimeout(timer);
   }, [search]);
 
-  /* =======================
-     FETCH ARTICLES
-  ======================= */
-  useEffect(() => {
-    const fetchArticles = async () => {
-      setLoading(true);
+  const { data: allArticles = [], isLoading: loadingAll } = useArticles("published");
+  const { data: searchResults = [], isLoading: loadingSearch } = useSearchArticles(debouncedSearch);
 
-      let data: any[] = [];
-      let error: any = null;
-
-      /* =======================
-         FULL TEXT SEARCH (RPC)
-      ======================= */
-      if (debouncedSearch) {
-        const res = await supabase.rpc("search_articles", {
-          search_query: debouncedSearch,
-        });
-
-        data = res.data || [];
-        error = res.error;
-
-        if (error) {
-          console.error(error);
-          setArticles([]);
-          setLoading(false);
-          return;
-        }
-
-        /* ⚠️ karena RPC belum join kategori */
-        const ids = data.map((a) => a.id);
-
-        if (ids.length > 0) {
-          const { data: withCategory } = await supabase
-            .from("articles")
-            .select(`
-              *,
-              article_categories (
-                categories (
-                  id,
-                  name
-                )
-              )
-            `)
-            .in("id", ids);
-
-          data = withCategory || [];
-        }
-      }
-
-      /* =======================
-         NORMAL FETCH
-      ======================= */
-      else {
-        const res = await supabase
-          .from("articles")
-          .select(`
-            *,
-            article_categories (
-              categories (
-                id,
-                name
-              )
-            )
-          `)
-          .eq("status", "published")
-          .order("created_at", { ascending: false });
-
-        data = res.data || [];
-        error = res.error;
-
-        if (error) {
-          console.error(error);
-          setArticles([]);
-          setLoading(false);
-          return;
-        }
-      }
-
-      /* =======================
-         FORMAT DATA
-      ======================= */
-      const formatted =
-        data?.map((a: any) => ({
-          ...a,
-          categories: a.article_categories
-            ?.map((c: any) => c.categories?.name)
-            .filter(Boolean),
-        })) || [];
-
-      setArticles(formatted);
-      setPage(1);
-      setLoading(false);
-    };
-
-    fetchArticles();
-  }, [debouncedSearch]);
+  const articles = debouncedSearch ? searchResults : allArticles;
+  const loading = debouncedSearch ? loadingSearch : loadingAll;
 
   const totalPages = Math.ceil(articles.length / ITEMS_PER_PAGE);
 
@@ -130,8 +33,12 @@ const ArticlesPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className="bg-background">
+      <Helmet>
+        <title>Semua Artikel - Artikelin</title>
+        <meta name="description" content="Temukan berbagai artikel menarik seputar web development, programming, dan teknologi di Artikelin." />
+        <meta property="og:title" content="Semua Artikel - Artikelin" />
+      </Helmet>
 
       <div className="container mx-auto px-4 md:px-8 py-12">
         {/* HEADER */}
@@ -213,8 +120,6 @@ const ArticlesPage = () => {
           </>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };

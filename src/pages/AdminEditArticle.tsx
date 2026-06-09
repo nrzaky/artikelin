@@ -3,12 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-
-type Category = {
-  id: number;
-  name: string;
-};
+import { useCategories } from "@/hooks/useCategories";
 
 type StorageImage = {
   name: string;
@@ -22,7 +20,6 @@ const AdminEditArticle = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
 
   const [status, setStatus] = useState<"draft" | "published">("draft");
@@ -43,16 +40,11 @@ const AdminEditArticle = () => {
      LOAD DATA
   ======================= */
 
+  const { data: categories = [] } = useCategories();
+
   useEffect(() => {
 
     const loadData = async () => {
-
-      const { data: cats } = await supabase
-        .from("categories")
-        .select("*")
-        .order("id");
-
-      setCategories(cats || []);
 
       const { data: article } = await supabase
         .from("articles")
@@ -121,26 +113,6 @@ const AdminEditArticle = () => {
 
       if (image) {
 
-        if (preview) {
-
-          try {
-
-            const fileName = preview.split("/").pop();
-
-            if (fileName) {
-
-              await supabase.storage
-                .from("articles")
-                .remove([fileName]);
-
-            }
-
-          } catch {
-            console.warn("Gagal hapus gambar lama");
-          }
-
-        }
-
         const cleanName = image.name
           .toLowerCase()
           .replace(/\s+/g, "-")
@@ -148,77 +120,65 @@ const AdminEditArticle = () => {
 
         const fileName = `${Date.now()}-${cleanName}`;
 
-        const { error } = await supabase.storage
+        const { error: uploadError, data } = await supabase.storage
           .from("articles")
-          .upload(fileName, image);
+          .upload(fileName, image, {
+            cacheControl: "3600",
+            upsert: false,
+          });
 
-        if (error) throw error;
+        if (uploadError) throw uploadError;
 
-        const { data } = supabase.storage
+        imageUrl = supabase.storage
           .from("articles")
-          .getPublicUrl(fileName);
-
-        imageUrl = data.publicUrl;
+          .getPublicUrl(data.path).data.publicUrl;
 
       }
 
-      /* =======================
-         CREATE SLUG
-      ======================= */
+      /* UPDATE ARTICLE */
 
-      const slug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-
-      /* =======================
-         UPDATE ARTICLE
-      ======================= */
-
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("articles")
         .update({
           title,
-          slug,
           content,
           status,
-          image: imageUrl,
           meta_title: metaTitle,
-          meta_description: metaDescription
+          meta_description: metaDescription,
+          image: imageUrl,
         })
         .eq("id", id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      /* =======================
-         UPDATE CATEGORIES
-      ======================= */
+      /* UPDATE CATEGORIES */
 
       await supabase
         .from("article_categories")
         .delete()
         .eq("article_id", id);
 
-      const relations = selectedCategories.map(catId => ({
-        article_id: Number(id),
-        category_id: catId
+      const categoryInserts = selectedCategories.map((c) => ({
+        article_id: id,
+        category_id: c,
       }));
 
-      await supabase
+      const { error: catError } = await supabase
         .from("article_categories")
-        .insert(relations);
+        .insert(categoryInserts);
 
+      if (catError) throw catError;
+
+      toast.success("Artikel berhasil diperbarui");
       navigate("/admin");
 
     } catch (err) {
 
       console.error(err);
-      alert("Gagal mengupdate artikel");
+      toast.error("Gagal mengupdate artikel");
 
     } finally {
-
       setSaving(false);
-
     }
 
   };
@@ -248,8 +208,11 @@ const AdminEditArticle = () => {
   }
 
   return (
-
-    <div className="container max-w-3xl py-10">
+    <div className="container max-w-4xl py-10">
+      <Helmet>
+        <title>Edit Artikel - Artikelin</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
 
       <h1 className="text-3xl font-extrabold mb-6">
         Edit Article

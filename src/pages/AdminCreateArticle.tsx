@@ -3,12 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-
-type Category = {
-  id: number;
-  name: string;
-};
+import { useCategories } from "@/hooks/useCategories";
 
 type StorageImage = {
   name: string;
@@ -21,7 +19,6 @@ const AdminCreateArticle = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
 
   const [status, setStatus] = useState<"draft" | "published">("draft");
@@ -41,17 +38,7 @@ const AdminCreateArticle = () => {
      LOAD CATEGORIES
   ========================= */
 
-  useEffect(() => {
-
-    const loadCategories = async () => {
-      const { data } = await supabase
-        .from("categories")
-        .select("*")
-        .order("id");
-      setCategories(data || []);
-    };
-    loadCategories();
-  }, []);
+  const { data: categories = [] } = useCategories();
 
   /* =========================
      LOAD IMAGE LIBRARY
@@ -75,7 +62,7 @@ const AdminCreateArticle = () => {
   const submit = async () => {
 
     if (!title || !content || selectedCategories.length === 0) {
-      alert("Judul, konten, dan kategori wajib diisi");
+      toast.error("Judul, konten, dan kategori wajib diisi");
       return;
     }
 
@@ -157,12 +144,13 @@ const AdminCreateArticle = () => {
 
       if (relError) throw relError;
 
+      toast.success("Artikel berhasil dibuat");
       navigate("/admin");
 
     } catch (err) {
 
       console.error(err);
-      alert("Gagal menyimpan artikel");
+      toast.error("Gagal membuat artikel");
 
     } finally {
 
@@ -189,8 +177,11 @@ const AdminCreateArticle = () => {
   };
 
   return (
-
-    <div className="container max-w-3xl py-10">
+    <div className="container max-w-4xl py-10">
+      <Helmet>
+        <title>Tulis Artikel Baru - Artikelin</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
 
       <h1 className="text-3xl font-bold mb-6">
         New Article

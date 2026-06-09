@@ -3,26 +3,12 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Share2, Copy, Twitter, MessageCircle } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import DOMPurify from "dompurify";
+import { toast } from "sonner";
 
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabase";
+import { useArticle, useRelatedArticles } from "@/hooks/useArticles";
+import { analyticsService } from "@/services/analytics.service";
 import CommentSection from "@/components/CommentSection";
-
-type Article = {
-  id: number;
-  title: string;
-  slug: string;
-  content?: string | null;
-  image?: string | null;
-  categories?: string[];
-  author?: string | null;
-  created_at?: string | null;
-  status: "draft" | "published";
-  meta_title?: string | null;
-  meta_description?: string | null;
-  views?: number;
-};
+import { Article } from "@/types";
 
 type Related = {
   id: number;
@@ -35,9 +21,22 @@ const ArticleDetail = () => {
 
   const { slug } = useParams<{ slug: string }>();
 
+  const { data: articleData, isLoading: loadingArticle } = useArticle(slug);
+  const { data: relatedData } = useRelatedArticles(slug);
+
   const [article, setArticle] = useState<Article | null>(null);
-  const [related, setRelated] = useState<Related[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [scrollProgress, setScrollProgress] = useState("0%");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalScroll = document.documentElement.scrollTop;
+      const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scroll = `${(totalScroll / windowHeight) * 100}%`;
+      setScrollProgress(scroll);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   /* ================= SHARE ================= */
 
@@ -47,9 +46,9 @@ const ArticleDetail = () => {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      alert("Link copied!");
+      toast.success("Link copied!");
     } catch {
-      alert("Failed to copy link");
+      toast.error("Failed to copy link");
     }
   };
 
@@ -74,86 +73,20 @@ const ArticleDetail = () => {
     }
   };
 
-  /* ================= FETCH ================= */
-
   useEffect(() => {
-
-    const fetchArticle = async () => {
-
-      if (!slug) return;
-
-      const { data, error } = await supabase
-        .from("articles")
-        .select(`
-          *,
-          article_categories (
-            categories (
-              name
-            )
-          )
-        `)
-        .eq("slug", slug)
-        .single();
-
-      if (error || !data) {
-        setArticle(null);
-        setLoading(false);
-        return;
-      }
-
-      const formatted = {
-        ...data,
-        categories: data.article_categories
-          ?.map((c: any) => c.categories?.name)
-          .filter(Boolean),
+    if (articleData) {
+      setArticle(articleData);
+      
+      const incrementView = async () => {
+        const newViews = await analyticsService.incrementView(articleData.id, articleData.views || 0);
+        setArticle(prev => prev ? { ...prev, views: newViews } : prev);
       };
+      incrementView();
+    }
+  }, [articleData]);
 
-      setArticle(formatted);
-
-      /* ================= VIEW TRACKING ================= */
-
-      const viewedKey = `viewed_${data.id}`;
-
-      if (!sessionStorage.getItem(viewedKey)) {
-
-        sessionStorage.setItem(viewedKey, "true");
-
-        await supabase
-          .from("articles")
-          .update({ views: (data.views || 0) + 1 })
-          .eq("id", data.id);
-
-        await supabase
-          .from("article_views")
-          .insert({
-            article_id: data.id
-          });
-
-        setArticle(prev =>
-          prev ? { ...prev, views: (prev.views || 0) + 1 } : prev
-        );
-
-      }
-
-      /* ================= RELATED ================= */
-
-      const { data: relatedData } = await supabase
-        .from("articles")
-        .select("id,title,slug,image")
-        .eq("status", "published")
-        .neq("slug", slug)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      setRelated(relatedData || []);
-
-      setLoading(false);
-
-    };
-
-    fetchArticle();
-
-  }, [slug]);
+  const related = relatedData || [];
+  const loading = loadingArticle;
 
   /* ================= READ TIME ================= */
 
@@ -180,41 +113,52 @@ const ArticleDetail = () => {
 
   }, [article]);
 
+  const plainText = article?.content
+    ? article.content.replace(/<[^>]+>/g, "").slice(0, 160)
+    : "";
+
+  const fullUrl =
+    `${window.location.origin}/articles/${article?.slug}`;
+
+  const sanitizedContent = article?.content
+    ? DOMPurify.sanitize(article.content)
+    : "";
+
+  const contentWithIds = useMemo(() => {
+    const isHtml = /<\/?[a-z][\s\S]*>/i.test(sanitizedContent);
+    if (!isHtml) return sanitizedContent;
+    let modified = sanitizedContent;
+    toc.forEach((t) => {
+      const target = `<h2>${t.text}</h2>`;
+      modified = modified.replace(target, `<h2 id="${t.id}" class="scroll-mt-24">${t.text}</h2>`);
+    });
+    return modified;
+  }, [sanitizedContent, toc]);
+
   if (loading)
     return (
       <div className="min-h-screen">
-        <Navbar />
+
         <div className="py-32 text-center text-muted-foreground">
           Loading article...
         </div>
-        <Footer />
+
       </div>
     );
 
   if (!article)
     return (
       <div className="min-h-screen">
-        <Navbar />
+
         <div className="py-32 text-center">
           <h1 className="text-2xl font-bold mb-4">
             Article not found
           </h1>
           <Link to="/articles">← Back to articles</Link>
         </div>
-        <Footer />
+
       </div>
     );
-
-  const plainText = article.content
-    ? article.content.replace(/<[^>]+>/g, "").slice(0, 160)
-    : "";
-
-  const fullUrl =
-    `${window.location.origin}/articles/${article.slug}`;
-
-  const sanitizedContent = article.content
-    ? DOMPurify.sanitize(article.content)
-    : "";
 
   const contentIsHtml = /<\/?[a-z][\s\S]*>/i.test(sanitizedContent);
 
@@ -226,7 +170,11 @@ const ArticleDetail = () => {
 
   return (
 
-    <div className="min-h-screen bg-background">
+    <div className="bg-background">
+      <div 
+        className="fixed top-0 left-0 h-1 bg-primary z-50 transition-all duration-150" 
+        style={{ width: scrollProgress }} 
+      />
 
       <Helmet>
 
@@ -278,24 +226,17 @@ const ArticleDetail = () => {
         </script>
 
       </Helmet>
-
-      <Navbar />
-
       {/* HERO */}
 
       <div className="relative h-[420px] md:h-[500px] overflow-hidden">
-
         <img
           src={article.image || "/placeholder.jpg"}
           alt={article.title}
           loading="lazy"
           className="w-full h-full object-cover"
         />
-
         <div className="absolute inset-0 bg-black/60" />
-
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 max-w-5xl mx-auto text-white">
-
           {article.categories?.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-3">
               {article.categories.map((cat) => (
@@ -308,23 +249,17 @@ const ArticleDetail = () => {
               ))}
             </div>
           )}
-
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold mt-4 mb-4 leading-tight">
             {article.title}
           </h1>
-
           <div className="flex flex-wrap gap-4 text-sm text-white/80 items-center">
-
             {article.author && <span>{article.author}</span>}
-
             {article.created_at && (
               <span>
                 {new Date(article.created_at).toLocaleDateString()}
               </span>
             )}
-
             <span>{readTime} min read</span>
-
             <span>{article.views || 0} views</span>
 
           </div>
@@ -362,18 +297,14 @@ const ArticleDetail = () => {
             </button>
 
           </div>
-
         </div>
-
       </div>
 
       {/* BODY */}
 
       <div className="mx-auto px-4 md:px-6 py-16 max-w-7xl">
-
-        <div className="flex flex-col lg:flex-row gap-16 justify-center">
-
-          <article className="w-full max-w-[70ch]">
+        <div className="flex flex-col lg:flex-row gap-16 justify-center max-w-6xl mx-auto">
+          <article className="w-full lg:w-[70%] max-w-[80ch]">
 
             <Link
               to="/articles"
@@ -407,7 +338,7 @@ const ArticleDetail = () => {
                 className="prose prose-sm md:prose-base lg:prose-lg prose-headings:font-semibold prose-headings:text-foreground prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:rounded-3xl prose-img:shadow-xl prose-img:border prose-img:border-border prose-blockquote:border-l-4 prose-blockquote:border-muted prose-blockquote:bg-muted/10 prose-blockquote:text-muted-foreground prose-code:rounded prose-code:border prose-code:border-border prose-code:bg-muted prose-pre:bg-slate-950 prose-pre:text-slate-100 dark:prose-invert dark:prose-pre:bg-slate-900 dark:prose-code:bg-slate-950 max-w-none"
               >
                 {contentIsHtml ? (
-                  <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
+                  <div dangerouslySetInnerHTML={{ __html: contentWithIds }} />
                 ) : (
                   <>
                     {contentParagraphs.map((paragraph, index) => (
@@ -417,17 +348,52 @@ const ArticleDetail = () => {
                 )}
               </div>
             </section>
-
           </article>
+
+          {/* TOC SIDEBAR */}
+          {toc.length > 0 && (
+            <aside className="hidden lg:block w-[25%] shrink-0 mt-28 sticky top-24 self-start">
+              <h3 className="font-bold text-lg mb-4 text-foreground/80 uppercase tracking-wider text-sm">Daftar Isi</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground border-l-2 border-border pl-4">
+                {toc.map((t) => (
+                  <li key={t.id}>
+                    <a href={`#${t.id}`} className="hover:text-primary transition-colors block">
+                      {t.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          )}
 
         </div>
 
+        {/* RELATED ARTICLES */}
+        {related.length > 0 && (
+          <div className="mt-20 pt-10 border-t border-border">
+            <h3 className="text-2xl font-bold mb-6">Artikel Terkait</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {related.map((rel: any) => (
+                <Link key={rel.id} to={`/articles/${rel.slug}`} className="group block">
+                  <div className="aspect-[16/9] rounded-xl overflow-hidden mb-3 bg-muted">
+                    <img 
+                      src={rel.image || "/placeholder.jpg"} 
+                      alt={rel.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <h4 className="font-bold group-hover:text-primary transition-colors line-clamp-2">
+                    {rel.title}
+                  </h4>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      <CommentSection articleId={article.id} />
+    <CommentSection articleId={article.id} />
 
-      <Footer />
-
-    </div>
+</div>
 
   );
 

@@ -1,69 +1,24 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import ArticleCard, { Article } from "@/components/ArticleCard";
+import { Helmet } from "react-helmet-async";
+import ArticleCard from "@/components/ArticleCard";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { useArticles } from "@/hooks/useArticles";
 
 const Index = () => {
-
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  /* ================= FETCH ARTICLES ================= */
-
-  useEffect(() => {
-
-    const fetchArticles = async () => {
-
-      const { data, error } = await supabase
-        .from("articles")
-        .select(`
-          *,
-          article_categories (
-            categories (
-              id,
-              name
-            )
-          )
-        `)
-        .eq("status", "published")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error(error);
-        setLoading(false);
-        return;
-      }
-
-      const formatted =
-        data?.map((a: any) => ({
-          ...a,
-          categories: a.article_categories
-            ?.map((c: any) => c.categories?.name)
-            .filter(Boolean)
-        })) || [];
-
-      setArticles(formatted);
-      setLoading(false);
-
-    };
-
-    fetchArticles();
-
-  }, []);
+  const { data: articles = [], isLoading: loading } = useArticles("published");
 
   const featured = articles[0];
   const recent = articles.slice(1, 4);
 
   return (
-
-    <div className="min-h-screen bg-background">
-
-      <Navbar />
+    <div className="bg-background">
+      <Helmet>
+        <title>Artikelin - Platform Artikel Modern</title>
+        <meta name="description" content="Kumpulan artikel programming, tutorial, dan wawasan teknologi terbaru di Artikelin." />
+        <meta property="og:title" content="Artikelin - Platform Artikel Modern" />
+        <meta property="og:description" content="Kumpulan artikel programming, tutorial, dan wawasan teknologi terbaru di Artikelin." />
+      </Helmet>
 
       {/* HERO */}
 
@@ -263,10 +218,9 @@ const Index = () => {
       </section>
 
 
-      <Footer />
+
 
     </div>
-
   );
 
 };

@@ -1,108 +1,69 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
-
-type Category = {
-  id: number;
-  name: string;
-  slug: string;
-};
+import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
+import { useCategories, useAddCategory, useUpdateCategory, useDeleteCategory } from "@/hooks/useCategories";
 
 const AdminCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { data: categories = [], isLoading } = useCategories();
+  const { mutateAsync: addCategoryMutation } = useAddCategory();
+  const { mutateAsync: updateCategoryMutation } = useUpdateCategory();
+  const { mutateAsync: deleteCategoryMutation } = useDeleteCategory();
+
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  const loadCategories = async () => {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("id", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setCategories(data || []);
-  };
-
-  useEffect(() => {
-    loadCategories();
-  }, []);
-
   const addCategory = async () => {
-    if (!name) return alert("Nama kategori wajib diisi");
-
+    if (!name) return toast.error("Nama kategori wajib diisi");
     const slug = name.toLowerCase().replace(/\s+/g, "-");
 
-    const { error } = await supabase
-      .from("categories")
-      .insert({
-        name,
-        slug,
-      });
-
-    if (error) {
+    try {
+      await addCategoryMutation({ name, slug });
+      setName("");
+      toast.success("Kategori berhasil ditambahkan");
+    } catch (error) {
       console.error(error);
-      return;
+      toast.error("Gagal menambah kategori");
     }
-
-    setName("");
-    loadCategories();
   };
 
   const updateCategory = async () => {
-    if (!editingId) {
-      alert("Pilih kategori dulu");
-      return;
-    }
-
-    if (!name) {
-      alert("Nama kategori tidak boleh kosong");
-      return;
-    }
+    if (!editingId) return toast.error("Pilih kategori dulu");
+    if (!name) return toast.error("Nama kategori tidak boleh kosong");
 
     const slug = name.toLowerCase().replace(/\s+/g, "-");
 
-    const { error } = await supabase
-      .from("categories")
-      .update({
-        name,
-        slug,
-      })
-      .eq("id", editingId);
-
-    if (error) {
+    try {
+      await updateCategoryMutation({ id: editingId, name, slug });
+      setName("");
+      setEditingId(null);
+      toast.success("Kategori berhasil diupdate");
+    } catch (error) {
       console.error(error);
-      return;
+      toast.error("Gagal mengupdate kategori");
     }
-
-    setName("");
-    setEditingId(null);
-    loadCategories();
   };
 
   const remove = async (id: number) => {
     if (!confirm("Hapus kategori ini?")) return;
 
-    const { error } = await supabase
-      .from("categories")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+    try {
+      await deleteCategoryMutation(id);
+      toast.success("Kategori berhasil dihapus");
+    } catch (error) {
       console.error(error);
-      return;
+      toast.error("Gagal menghapus kategori");
     }
-
-    loadCategories();
   };
 
   return (
     <div className="container max-w-2xl py-10">
+      <Helmet>
+        <title>Kelola Kategori - Artikelin</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Manage Categories</h1>
 

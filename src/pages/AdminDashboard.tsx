@@ -1,13 +1,13 @@
 import { Eye, Pencil, Trash2 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { toast } from "sonner";
 
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { isAdmin, logoutAdmin } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
 import AdminAnalytics from "@/components/AdminAnalytics";
+import { useArticles, useDeleteArticle } from "@/hooks/useArticles";
+import { Article } from "@/types";
 
 import {
   Table,
@@ -27,169 +27,53 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-/* =======================
-   TYPE
-======================= */
-
-type Article = {
-  id: number;
-  title: string;
-  slug: string;
-  content: string;
-  image?: string | null;
-  categories?: string[];
-  author?: string | null;
-  created_at?: string | null;
-  status: "draft" | "published";
-  views?: number;
-};
-
 const AdminDashboard = () => {
 
-  const navigate = useNavigate();
-
-  const [articles, setArticles] = useState<Article[]>([]);
+  const { data: articles = [], isLoading: loading } = useArticles();
+  const { mutateAsync: deleteArticleMutation } = useDeleteArticle();
+  
   const [analytics, setAnalytics] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [hoverImage, setHoverImage] = useState<string | null>(null);
-  const [filter, setFilter] =
-    useState<"all" | "published" | "draft">("all");
-
-  /* =======================
-     AUTH GUARD
-  ======================= */
-
-  useEffect(() => {
-
-    const check = async () => {
-
-      const admin = await isAdmin();
-      if (!admin) navigate("/admin/login");
-
-    };
-
-    check();
-
-  }, []);
+  const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
 
   /* =======================
      FETCH ARTICLES
   ======================= */
 
   useEffect(() => {
-
-    const fetchArticles = async () => {
-
-      const { data, error } = await supabase
-        .from("articles")
-        .select(`
-          *,
-          article_categories (
-            categories (
-              id,
-              name
-            )
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      const formatted =
-        data?.map((a: any) => ({
-          ...a,
-          categories: a.article_categories
-            ?.map((c: any) => c.categories?.name)
-            .filter(Boolean),
-        })) || [];
-
-      setArticles(formatted);
-
+    if (articles.length > 0) {
       /* =======================
          ANALYTICS DATA
       ======================= */
-
-      const top =
-        formatted
-          .filter(a => a.status === "published")
-          .sort((a,b) => (b.views || 0) - (a.views || 0))
-          .slice(0,5)
-          .map(a => ({
-            title: a.title.length > 20
-              ? a.title.slice(0,20) + "..."
-              : a.title,
-            views: a.views || 0
-          }));
+      const top = articles
+        .filter(a => a.status === "published")
+        .sort((a,b) => (b.views || 0) - (a.views || 0))
+        .slice(0,5)
+        .map(a => ({
+          title: a.title.length > 20
+            ? a.title.slice(0,20) + "..."
+            : a.title,
+          views: a.views || 0
+        }));
 
       setAnalytics(top);
-
-      setLoading(false);
-
-    };
-
-    fetchArticles();
-
-  }, []);
+    }
+  }, [articles]);
 
   /* =======================
    DELETE ARTICLE
-======================= */
+  ======================= */
 
-const deleteArticle = async (article: Article) => {
+  const deleteArticle = async (article: Article) => {
+    if (!confirm("Yakin ingin menghapus artikel ini?")) return;
 
-  if (!confirm("Yakin ingin menghapus artikel ini?")) return;
-
-  try {
-
-    /* DELETE ARTICLE FIRST */
-
-    const { error } = await supabase
-      .from("articles")
-      .delete()
-      .eq("id", article.id);
-
-    if (error) {
-      alert("Gagal menghapus artikel");
-      return;
+    try {
+      await deleteArticleMutation({ id: article.id, image: article.image || undefined });
+      toast.success("Artikel berhasil dihapus");
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menghapus artikel");
     }
-
-    /* DELETE IMAGE */
-
-    if (article.image) {
-
-      const fileName = article.image.split("/").pop();
-
-      if (fileName) {
-
-        const { error: storageError } = await supabase.storage
-          .from("articles")
-          .remove([fileName]);
-
-        if (storageError) {
-          console.error("Storage delete error:", storageError);
-        }
-
-      }
-
-    }
-
-    /* UPDATE UI */
-
-    setArticles(prev =>
-      prev.filter(a => a.id !== article.id)
-    );
-
-  } catch (err) {
-
-    console.error(err);
-    alert("Gagal menghapus artikel");
-
-  }
-
-};
+  };
 
 
   /* =======================
@@ -217,9 +101,7 @@ const deleteArticle = async (article: Article) => {
 
   return (
 
-    <div className="min-h-screen bg-background">
-
-      <Navbar />
+    <div className="bg-background">
 
       <div className="container mx-auto px-4 md:px-8 py-12">
 
@@ -250,15 +132,7 @@ const deleteArticle = async (article: Article) => {
               </Link>
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => {
-                logoutAdmin();
-                navigate("/admin/login");
-              }}
-            >
-              Logout
-            </Button>
+
 
           </div>
 
@@ -444,8 +318,6 @@ const deleteArticle = async (article: Article) => {
         </div>
 
       </div>
-
-      <Footer />
 
     </div>
 
