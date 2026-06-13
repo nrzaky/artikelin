@@ -18,6 +18,11 @@ const Index = () => {
         <meta name="description" content="Kumpulan artikel programming, tutorial, dan wawasan teknologi terbaru di Artikelin." />
         <meta property="og:title" content="Artikelin - Platform Artikel Modern" />
         <meta property="og:description" content="Kumpulan artikel programming, tutorial, dan wawasan teknologi terbaru di Artikelin." />
+        <meta property="og:url" content="https://artikelin.my.id/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Artikelin" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <link rel="canonical" href="https://artikelin.my.id/" />
       </Helmet>
 
       {/* HERO */}

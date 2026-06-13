@@ -39,6 +39,12 @@ const ArticlesPage = () => {
         <title>All Articles - Artikelin</title>
         <meta name="description" content="Temukan berbagai artikel menarik seputar web development, programming, dan teknologi di Artikelin." />
         <meta property="og:title" content="All Articles - Artikelin" />
+        <meta property="og:description" content="Temukan berbagai artikel menarik seputar web development, programming, dan teknologi di Artikelin." />
+        <meta property="og:url" content="https://artikelin.my.id/articles" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Artikelin" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <link rel="canonical" href="https://artikelin.my.id/articles" />
       </Helmet>
 
       {/* HEADER SECTION */}

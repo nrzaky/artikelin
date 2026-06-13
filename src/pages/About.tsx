@@ -14,6 +14,13 @@ const About = () => {
           name="description"
           content="About the creator of Artikelin, a backend developer passionate about building scalable web applications."
         />
+        <meta property="og:title" content="About - Naufal Raikhan Zaky" />
+        <meta property="og:description" content="About the creator of Artikelin, a backend developer passionate about building scalable web applications." />
+        <meta property="og:url" content="https://artikelin.my.id/about" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Artikelin" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <link rel="canonical" href="https://artikelin.my.id/about" />
       </Helmet>
 
       <section id="about" className="py-20 bg-gradient-subtle">
